@@ -1,0 +1,6 @@
+FCA_API_Client.code-workspace
+fca-api-client/.env
+fca-api-client/src/Response.json
+fca-api-client/src/Temp.py
+fca-api-client/src/__pycache__/
+fca-api-client/tests/
