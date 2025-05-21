@@ -67,10 +67,10 @@ class FirmInvestmentType(BaseModel):
 
 class FirmRequirement(BaseModel):
     effective_date: Optional[str] = Field(None, alias="Effective Date")
-    derivatives_as_incidental_services_only: Optional[str] = Field(None, alias="Derivatives as incidental services only.")
+    derivatives_as_incidental_services_only: Optional[str] = Field('Null', alias="Derivatives as incidental services only.")
     requirement_reference: Optional[str] = Field(None, alias="Requirement Reference")
     financial_promotions_requirement: Optional[bool] = Field(None, alias="Financial Promotions Requirement")
-    financial_promotions_investment_types: Optional[HttpUrl] = Field(None, alias="Financial Promotions Investment Types")
+    financial_promotions_investment_types: Optional[str] = Field('Null', alias="Financial Promotions Investment Types")
 
 class FirmActivityDetail(BaseModel):
     participation: Optional[str] = Field(None, alias="participation")

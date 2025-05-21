@@ -3,7 +3,7 @@ import requests
 from fca_models import FirmData, FirmNames, FirmNameDetail, FirmAddress, FirmControlledFunction
 from fca_models import FirmControlledFunctionDetail, IndividualData, FirmRequirement, FirmRegulator
 from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmAppointedRepresentative
-from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail
+from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType
 from auth import get_auth_headers  # Import the simplified function
 from utils import rate_limiter
 import logging
@@ -294,6 +294,44 @@ class FCAApiClient:
             logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
+
+    def get_firm_investment_types(self, frn: int, reference: str) -> Optional[List[FirmInvestmentType]]:
+        """
+        Retrieve the investment types associated with a specific firm by its Firm Reference Number (FRN).
+
+        This function sends a GET request to the FCA API's firm investment types endpoint to fetch
+        detailed information about the firm's investment types. It depends on:
+        - The `requests` library for making HTTP requests.
+        - The `FirmInvestmentType` Pydantic model to parse the API response.
+
+        Args:
+            frn (str): The Firm Reference Number.
+
+        Returns:
+            Optional[List[FirmInvestmentType]]: A list of `FirmInvestmentType` objects if the request is successful, otherwise None.
+        """
+        try:
+            url = f"{self.BASE_URL}/Firm/{frn}/Requirements/{reference}/InvestmentType"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                investment_types_data = response.json()
+                logger.info(f"Investment types retrieved successfully for FRN: {frn}")
+                if 'Data' in investment_types_data and isinstance(investment_types_data['Data'], list) and len(investment_types_data['Data']) > 0:
+                    return [FirmInvestmentType(**investment_type) for investment_type in investment_types_data['Data']]
+                else:
+                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+            else:
+                response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Request failed for FRN {frn}: {e}")
+            return None
+        except ValueError as e:
+            logger.error(f"Value error for FRN {frn}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            return None
+        return None
 
     def get_firm_individuals(self, frn: int) -> Optional[List[IndividualData]]:
         """

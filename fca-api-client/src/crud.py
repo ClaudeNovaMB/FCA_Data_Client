@@ -7,7 +7,7 @@ from config import engine  # Correctly imports engine
 from db_models import FirmTable, FirmExceptionalInfoDetailTable, FirmNamesTable, FirmAddressTable
 from db_models import FirmControlledFunctionTable, FirmActivitiesAndPermissionsTable, FirmRequirementTable
 from db_models import FirmRegulatorTable, FirmWaiverTable, FirmExclusionTable, FirmDisciplinaryHistoryTable
-from db_models import IndividualDataTable, FirmAppointedRepresentativeTable, Base
+from db_models import IndividualDataTable, FirmAppointedRepresentativeTable, FirmInvestmentTypeTable, Base
 import logging
 from typing import Dict, Any, List
 from psycopg2.errors import UniqueViolation
@@ -349,6 +349,69 @@ class database_operations:
             requirements_status = False
             logger.error(f"Error saving firm requirements to database for FRN {frn}: {e}")
             return requirements_status
+        finally:
+            session.close()
+            logger.info(f"Session closed for FRN: {frn}")
+
+    def read_firm_requirement_references(self, frn: int) -> List[str]:
+        """
+        Read firm requirement references from the database.
+
+        This function queries the `FirmRequirementTable` to retrieve all requirement references for a given FRN.
+        It depends on:
+        - The `Session` object from SQLAlchemy for database transactions.
+        - The `FirmRequirementTable` SQLAlchemy model to represent the database table.
+
+        Args:
+            frn (int): The Firm Reference Number.
+
+        Returns:
+            List[str]: A list of requirement references for the specified FRN.
+        """
+        session = Session()
+        try:
+            requirement_references = session.query(FirmRequirementTable).filter_by(firm_frn=frn).all()
+            return [reference.requirement_reference for reference in requirement_references]
+        except Exception as e:
+            logger.error(f"Error reading firm requirement references from database for FRN {frn}: {e}")
+            return []
+        finally:
+            session.close()
+            logger.info(f"Session closed for FRN: {frn}")
+
+    def save_firm_investment_types_to_database(self, firm_investment_types: List[str], frn: int):
+        """
+        Save firm investment types to the database.
+
+        This function creates new `FirmInvestmentTypeTable` SQLAlchemy objects and saves them to the database.
+        It depends on:
+        - The `Session` object from SQLAlchemy for database transactions.
+        - The `FirmInvestmentTypeTable` SQLAlchemy model to represent the database table.
+
+        Args:
+            firm_investment_types (List[str]): The list of firm investment types to be saved.
+            frn (int): The Firm Reference Number.
+        """
+        session = Session()
+        try:
+            investment_type_status = True
+            for investment_type in firm_investment_types:
+                try:
+                    investment_type_entry = FirmInvestmentTypeTable(
+                        firm_frn=frn,
+                        investment_type=investment_type
+                    )
+                    session.add(investment_type_entry)
+                    session.commit()
+                except UniqueViolation:
+                    session.rollback()
+            logger.info(f"Firm investment types saved to database for FRN: {frn}")
+            return investment_type_status
+        except Exception as e:
+            session.rollback()
+            investment_type_status = False
+            logger.error(f"Error saving firm investment types to database for FRN {frn}: {e}")
+            return investment_type_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")

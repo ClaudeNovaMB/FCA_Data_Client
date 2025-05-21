@@ -89,14 +89,28 @@ def main():
         else:
             print(f"Failed to save firm requirements for FRN: {frn}")
 
-    # firm_regulators = client.get_firm_regulators(frn)
+    firm_requirement_references = crud.read_firm_requirement_references(frn)
+    for reference in firm_requirement_references:
+        
+        firm_investment_type = client.get_firm_investment_types(frn, reference)
 
-    # if firm_regulators is not None:
-    #     regulators_status = crud.save_firm_regulators_to_database(firm_regulators, frn=frn)
-    #     if regulators_status:
-    #         print(f"Firm regulators saved to database for FRN: {frn}")
-    #     else:
-    #         print(f"Failed to save firm regulators for FRN: {frn}")
+        if firm_investment_type is not None:
+            investment_type_status = crud.save_firm_investment_types_to_database(firm_investment_type, frn=frn)
+            if investment_type_status:
+                print(f"Firm investment types updated in database for FRN: {frn}")
+            else:
+                print(f"Failed to update firm investment types for FRN: {frn}")
+
+
+
+    firm_regulators = client.get_firm_regulators(frn)
+
+    if firm_regulators is not None:
+        regulators_status = crud.save_firm_regulators_to_database(firm_regulators, frn=frn)
+        if regulators_status:
+            print(f"Firm regulators saved to database for FRN: {frn}")
+        else:
+            print(f"Failed to save firm regulators for FRN: {frn}")
 
     # firm_waivers = client.get_firm_waiver(frn)
 
