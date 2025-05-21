@@ -9,6 +9,10 @@ This project is a lightweight, scriptable client for querying and retrieving fir
 - **Structured Response Parsing**: Parses API responses into structured formats for easy access to relevant data.
 - **Utility Functions**: Includes functions for rate limiting, retry logic, and logging.
 
+## Other tools used
+1. Docker
+2. Containerised TimeScaleDB
+
 ## Installation
 
 1. Clone the repository:
