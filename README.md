@@ -9,7 +9,7 @@ This project is a lightweight, scriptable client for querying and retrieving fir
 - **Structured Response Parsing**: Parses API responses into structured formats for easy access to relevant data.
 - **Utility Functions**: Includes functions for rate limiting, retry logic, and logging.
 
-## Other tools used
+## Other tools I used (The best relational DB in the world IMO)
 1. Docker
 2. Containerised TimeScaleDB
 
@@ -26,10 +26,21 @@ This project is a lightweight, scriptable client for querying and retrieving fir
    pip install -r requirements.txt
    ```
 
-3. Set up your environment variables for API credentials:
+3. Register on the FCA Registrations website to obtain an API key:
+   - Visit the [FCA Registrations website](https://register.fca.org.uk/Developer/s/).
+   - Sign up for an account if you don’t already have one.
+   - Navigate to the API section and generate an API key.
+
+4. Create a `.env` file in the root of the project directory and add the following variables:
    ```
-   export FCA_API_KEY='your_api_key'
+   X_AUTH_EMAIL='your@email.com'  # Your registered email for the FCA API
+   X_AUTH_KEY='your_api_key'      # The API key obtained from the FCA Registrations website
+   DATABASE_URL='your_database_connection_string'  # Connection string for your database
    ```
+   Replace the placeholder values with your actual credentials.
+
+   **Note:** Do not commit the `.env` file to version control to keep your credentials secure. You can add `.env` to your `.gitignore` file to ensure it is ignored by Git.
+
 
 ## Usage
 
