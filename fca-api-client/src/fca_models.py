@@ -73,17 +73,12 @@ class FirmRequirement(BaseModel):
     financial_promotions_investment_types: Optional[HttpUrl] = Field(None, alias="Financial Promotions Investment Types")
 
 class FirmActivityDetail(BaseModel):
-    activity_name: Optional[str] = Field(None)
-    values: Optional[List[str]] = Field(default_factory=list)
+    participation: Optional[str] = Field(None, alias="participation")
+    participation_option: Optional[List[str]] = Field(default_factory=list, alias="participation_option")
 
 class FirmActivitiesAndPermissions(BaseModel):
-    acting_as_cbtl_advisor: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="Acting as a CBTL advisor")
-    acting_as_cbtl_administrator: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="Acting as a CBTL administrator")
-    cbtl_status: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="CBTL Status")
-    cbtl_effective_date: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="CBTL Effective Date")
-    entering_into_regulated_consumer_hire_agreements_as_owner: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="Entering into Regulated Consumer Hire Agreements as owner")
-    agreeing_to_carry_on_a_regulated_activity: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="Agreeing to carry on a regulated activity")
-    acting_as_cbtl_administrator: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="Acting as a CBTL Administrator")
+    activity_name: Optional[str] = Field(None, alias="activity_name")
+    participation: Optional[List[FirmActivityDetail]] = Field(default_factory=list, alias="participation")
 
 class FirmControlledFunctionDetail(BaseModel):
     suspension_restriction_end_date: Optional[str] = Field(None, alias="Suspension / Restriction End Date")

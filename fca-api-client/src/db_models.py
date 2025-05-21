@@ -41,11 +41,12 @@ class FirmNamesTable(Base):
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
     firm_name = Column(String, nullable=False)
     name_status = Column(String, nullable=True)
     effective_from = Column(String, nullable=True)
     effective_to = Column(String, nullable=True)
-    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
+    
 
 class FirmAddressTable(Base):
     __tablename__ = 'firm_addresses'
@@ -86,33 +87,30 @@ class FirmActivitiesAndPermissionsTable(Base):
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    acting_as_cbtl_advisor = Column(String, nullable=True)
-    acting_as_cbtl_administrator = Column(String, nullable=True)
-    cbtl_status = Column(String, nullable=True)
-    cbtl_effective_date = Column(String, nullable=True)
-    entering_into_regulated_consumer_hire_agreements_as_owner = Column(String, nullable=True)
-    agreeing_to_carry_on_a_regulated_activity = Column(String, nullable=True)
-    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
+    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)  # Foreign key to FirmTable
+    activity_name = Column(String, nullable=False)  # Activity name is required
+    participation = Column(String, nullable=False)  # Participation is required
+    participation_option = Column(String, nullable=True)  # Values can be optional
 
 class FirmRequirementTable(Base):
     __tablename__ = 'firm_requirements'
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
     effective_date = Column(String, nullable=True)
     derivatives_as_incidental_services_only = Column(String, nullable=True)
     requirement_reference = Column(String, nullable=True)
     financial_promotions_requirement = Column(String, nullable=True)
     financial_promotions_investment_types = Column(String, nullable=True)
-    firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
 
 class FirmInvestmentTypeTable(Base):
     __tablename__ = 'firm_investment_types'
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    investment_type_name = Column(String, nullable=False)
     firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
+    investment_type_name = Column(String, nullable=False)
 
 class FirmRegulatorTable(Base):
     __tablename__ = 'firm_regulators'

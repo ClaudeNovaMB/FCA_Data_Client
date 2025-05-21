@@ -1,6 +1,7 @@
 from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction, FirmRequirement 
 from fca_models import FirmRegulator, FirmWaiver, FirmExclusion, FirmDisciplinaryHistory
 from fca_models import IndividualData, FirmAppointedRepresentative
+from fca_models import FirmActivitiesAndPermissions
 from sqlalchemy.orm import sessionmaker
 from config import engine  # Correctly imports engine
 from db_models import FirmTable, FirmExceptionalInfoDetailTable, FirmNamesTable, FirmAddressTable
@@ -50,6 +51,7 @@ class database_operations:
         """
         session = Session()
         try:
+            firm_data_status = True
             firm = FirmTable(
                 frn=firm_data.frn,
                 organisation_name=firm_data.organisation_name,
@@ -72,22 +74,26 @@ class database_operations:
             )
             if firm_data.exceptional_info_details is not None:
                 for info in firm_data.exceptional_info_details:
-                    exceptional_info_detail = FirmExceptionalInfoDetailTable(
-                        firm_frn=firm_data.frn,
-                        exceptional_info_title=info.exceptional_info_title,
-                        exceptional_info_body=info.exceptional_info_body
-                    )
-                    session.add(exceptional_info_detail)
+                    try:
+                        exceptional_info_detail = FirmExceptionalInfoDetailTable(
+                            firm_frn=firm_data.frn,
+                            exceptional_info_title=info.exceptional_info_title,
+                            exceptional_info_body=info.exceptional_info_body
+                        )
+                        session.add(exceptional_info_detail)
+                        session.commit()
+                        logger.info(f"Exceptional info detail added for FRN: {firm_data.frn}")
+                    except UniqueViolation:
+                        session.rollback()
             session.add(firm)
             session.commit()
-            return True
-            # Save exceptional info details
-            
             logger.info(f"Firm data saved to database for FRN: {firm_data.frn}")
+            return firm_data_status
         except Exception as e:
             session.rollback()
+            firm_data_status = False
             logger.error(f"Error saving firm data to database for FRN {firm_data.frn}: {e}")
-            return False
+            return firm_data_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {firm_data.frn}")
@@ -107,37 +113,43 @@ class database_operations:
         session = Session()
         try:
             if firm_names.current_names is not None:
+                firm_name_status = True
                 for name in firm_names.current_names:
-                    firm_name = FirmNamesTable(
-                        firm_name=name.firm_name,
-                        name_status=name.name_status,
-                        effective_from=name.effective_from,
-                        effective_to=name.effective_to,
-                        firm_frn=frn
-                    )
-                    session.add(firm_name)
-                    session.commit()
-                    logger.info(f"FRN: {frn} - Current name added: {name.firm_name}")
+                    try:
+                        firm_name = FirmNamesTable(
+                            firm_frn=frn,
+                            firm_name=name.firm_name,
+                            name_status=name.name_status,
+                            effective_from=name.effective_from,
+                            effective_to=name.effective_to,
+                        )
+                        session.add(firm_name)
+                        session.commit()
+                        logger.info(f"FRN: {frn} - Current name added: {name.firm_name}")
+                    except UniqueViolation:
+                        session.rollback()
             if firm_names.previous_names is not None:
                 for name in firm_names.previous_names:
-                    firm_name = FirmNamesTable(
-                        firm_name=name.firm_name,
-                        name_status=name.name_status,
-                        effective_from=name.effective_from,
-                        effective_to=name.effective_to,
-                        firm_frn=frn
-                    )
-                    session.add(firm_name)
-                    session.commit()
-                    logger.info(f"FRN: {frn} - Previous name added: {name.firm_name}")
+                    try:
+                        firm_name = FirmNamesTable(
+                            firm_frn=frn,
+                            firm_name=name.firm_name,
+                            name_status=name.name_status,
+                            effective_from=name.effective_from,
+                            effective_to=name.effective_to
+                        )
+                        session.add(firm_name)
+                        session.commit()
+                        logger.info(f"FRN: {frn} - Previous name added: {name.firm_name}")
+                    except UniqueViolation:
+                        session.rollback()
                 logger.info(f"Firm names updated in database for FRN: {frn}")
                 return True
-        except UniqueViolation:
-            session.rollback()
         except Exception as e:
             session.rollback()
+            firm_name_status = False
             logger.error(f"Error updating firm names to database for FRN {frn}: {e}")
-            return False
+            return firm_name_status
         finally:
             session.close()
             logger.info(f"Session closed for Firm_Names (FRN: {frn})")
@@ -203,80 +215,99 @@ class database_operations:
         """
         session = Session()
         try:
+            controlled_functions_status = True
             # Save current controlled functions if available
             if controlled_function.current:
                 for key, detail in controlled_function.current.items():
-                    controlled_function_entry = FirmControlledFunctionTable(
-                        firm_frn=frn,
-                        control_status='current',
-                        individual_name=detail.individual_name,
-                        controller_name=detail.name,
-                        url=detail.url,
-                        effective_date=detail.effective_date,
-                        end_date=detail.end_date,
-                        suspension_restriction_start_date=detail.suspension_restriction_start_date,
-                        suspension_restriction_end_date=detail.suspension_restriction_end_date,
-                        restriction=detail.restriction
-                    )
-                    session.merge(controlled_function_entry)
-                    session.commit()
+                    try:
+                        controlled_function_entry = FirmControlledFunctionTable(
+                            firm_frn=frn,
+                            control_status='current',
+                            individual_name=detail.individual_name,
+                            controller_name=detail.name,
+                            url=detail.url,
+                            effective_date=detail.effective_date,
+                            end_date=detail.end_date,
+                            suspension_restriction_start_date=detail.suspension_restriction_start_date,
+                            suspension_restriction_end_date=detail.suspension_restriction_end_date,
+                            restriction=detail.restriction
+                        )
+                        session.merge(controlled_function_entry)
+                        session.commit()
+                    except UniqueViolation:
+                        session.rollback()
             # Save previous controlled functions if available
             if controlled_function.previous:
                 for key, detail in controlled_function.previous.items():
-                    controlled_function_entry = FirmControlledFunctionTable(
-                        firm_frn=frn,
-                        control_status='previous',
-                        individual_name=detail.individual_name,
-                        controller_name=detail.name,
-                        url=detail.url,
-                        effective_date=detail.effective_date,
-                        end_date=detail.end_date,
-                        suspension_restriction_start_date=detail.suspension_restriction_start_date,
-                        suspension_restriction_end_date=detail.suspension_restriction_end_date,
-                        restriction=detail.restriction
-                    )
-                    session.merge(controlled_function_entry)
-                    session.commit()
+                    try:
+                        controlled_function_entry = FirmControlledFunctionTable(
+                            firm_frn=frn,
+                            control_status='previous',
+                            individual_name=detail.individual_name,
+                            controller_name=detail.name,
+                            url=detail.url,
+                            effective_date=detail.effective_date,
+                            end_date=detail.end_date,
+                            suspension_restriction_start_date=detail.suspension_restriction_start_date,
+                            suspension_restriction_end_date=detail.suspension_restriction_end_date,
+                            restriction=detail.restriction
+                        )
+                        session.merge(controlled_function_entry)
+                        session.commit()
+                    except UniqueViolation:
+                        session.rollback()
             
             logger.info(f"Controlled functions updated in database for FRN: {frn}")
-            return True
-        except UniqueViolation:
-                    session.rollback()
+            return controlled_functions_status
         except Exception as e:
             session.rollback()
+            controlled_functions_status = False
             logger.error(f"Error saving controlled functions to database for FRN {frn}: {e}")
-            return False
+            return controlled_functions_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")
 
-    def save_firm_activities_and_permissions_to_database(self, activities_permissions: Dict[str, Any], frn: int):
+    def save_firm_activities_and_permissions_to_database(self, activities_permissions: List[FirmActivitiesAndPermissions], frn: int):
         """
         Save firm activities and permissions to the database.
 
-        This function creates a new `FirmActivitiesAndPermissionsTable` SQLAlchemy object and saves it to the database.
+        This function creates new `FirmActivitiesAndPermissionsTable` SQLAlchemy objects and saves them to the database.
         It depends on:
         - The `Session` object from SQLAlchemy for database transactions.
         - The `FirmActivitiesAndPermissionsTable` SQLAlchemy model to represent the database table.
 
         Args:
-            activities_permissions (Dict[str, Any]): The activities and permissions data to be saved.
+            activities_permissions (List[FirmActivitiesAndPermissions]): The parsed activities and permissions data to be saved.
             frn (int): The Firm Reference Number.
         """
         session = Session()
         try:
-            activities_permissions_entry = FirmActivitiesAndPermissionsTable(
-                activities_permissions=str(activities_permissions),
-                firm_frn=frn
-            )
-            session.add(activities_permissions_entry)
-            session.commit()
+            activities_permissions_status = True
+            for activity_permission in activities_permissions:
+                if activity_permission.participation:
+                    for participation_detail in activity_permission.participation:
+                        if participation_detail.participation_option:
+                            for participation_option in participation_detail.participation_option:
+                                try:
+                                    entry = FirmActivitiesAndPermissionsTable(
+                                        firm_frn=frn,
+                                        activity_name=activity_permission.activity_name,
+                                        participation=participation_detail.participation,
+                                        participation_option=participation_option
+                                    )
+                                    session.merge(entry)
+                                    session.commit()
+                                except UniqueViolation:
+                                    session.rollback()
+                
             logger.info(f"Activities and permissions saved to database for FRN: {frn}")
-            return True
+            return activities_permissions_status
         except Exception as e:
             session.rollback()
+            activities_permissions_status = False
             logger.error(f"Error saving activities and permissions to database for FRN {frn}: {e}")
-            return False
+            return activities_permissions_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")
@@ -296,23 +327,28 @@ class database_operations:
         """
         session = Session()
         try:
+            requirements_status = True
             for requirement in firm_requirements:
-                requirement_entry = FirmRequirementTable(
-                    effective_date=requirement.effective_date,
-                    derivatives_as_incidental_services_only=requirement.derivatives_as_incidental_services_only,
-                    requirement_reference=requirement.requirement_reference,
-                    financial_promotions_requirement=requirement.financial_promotions_requirement,
-                    financial_promotions_investment_types=requirement.financial_promotions_investment_types,
-                    firm_frn=frn
-                )
-                session.add(requirement_entry)
-            session.commit()
+                try:
+                    requirement_entry = FirmRequirementTable(
+                        firm_frn=frn,
+                        effective_date=requirement.effective_date,
+                        derivatives_as_incidental_services_only=requirement.derivatives_as_incidental_services_only,
+                        requirement_reference=requirement.requirement_reference,
+                        financial_promotions_requirement=requirement.financial_promotions_requirement,
+                        financial_promotions_investment_types=requirement.financial_promotions_investment_types
+                    )
+                    session.merge(requirement_entry)
+                    session.commit()
+                except UniqueViolation:
+                    session.rollback()
             logger.info(f"Firm requirements saved to database for FRN: {frn}")
-            return True
+            return requirements_status
         except Exception as e:
             session.rollback()
+            requirements_status = False
             logger.error(f"Error saving firm requirements to database for FRN {frn}: {e}")
-            return False
+            return requirements_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")

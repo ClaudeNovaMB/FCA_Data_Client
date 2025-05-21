@@ -3,10 +3,11 @@ import requests
 from fca_models import FirmData, FirmNames, FirmNameDetail, FirmAddress, FirmControlledFunction
 from fca_models import FirmControlledFunctionDetail, IndividualData, FirmRequirement, FirmRegulator
 from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmAppointedRepresentative
+from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail
 from auth import get_auth_headers  # Import the simplified function
 from utils import rate_limiter
-from parser import parse_firm_data  # Import the parse_firm_data function
 import logging
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -42,7 +43,7 @@ class FCAApiClient:
             url = f"{self.BASE_URL}/firms/search"
             response = requests.get(url, headers=self.headers, params={"query": query})
             if response.status_code == 200:
-                return parse_firm_data(response.json())
+                return response.json()
             else:
                 response.raise_for_status()
             return []  # Return an empty list as a fallback
@@ -211,19 +212,20 @@ class FCAApiClient:
             return None
         return None  # Return None as a fallback
 
-    def get_firm_activities_and_permissions(self, frn: int) -> Optional[Dict[str, Any]]:
+    def get_firm_activities_and_permissions(self, frn: int) -> Optional[List[FirmActivitiesAndPermissions]]:
         """
         Retrieve the activities and permissions associated with a specific firm by its Firm Reference Number (FRN).
 
         This function sends a GET request to the FCA API's firm activities and permissions endpoint to fetch
         detailed information about the firm's activities and permissions. It depends on:
         - The `requests` library for making HTTP requests.
+        - The `FirmActivitiesAndPermissions` and `FirmActivityDetail` Pydantic models to parse the API response.
 
         Args:
             frn (str): The Firm Reference Number.
 
         Returns:
-            Optional[Dict[str, Any]]: A dictionary containing the firm's activities and permissions if the request is successful, otherwise None.
+            Optional[List[FirmActivitiesAndPermissions]]: A list of `FirmActivitiesAndPermissions` objects if the request is successful, otherwise None.
         """
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Permissions"
@@ -232,7 +234,14 @@ class FCAApiClient:
                 activities_permissions_data = response.json()
                 logger.info(f"Activities and permissions retrieved successfully for FRN: {frn}")
                 if 'Data' in activities_permissions_data and isinstance(activities_permissions_data['Data'], dict):
-                    return activities_permissions_data['Data']
+                    parsed_activities = []
+                    for activity_name, details in activities_permissions_data['Data'].items():
+                        participation_list = []
+                        for detail in details:
+                            for participation_key, participation_option in detail.items():
+                                participation_list.append(FirmActivityDetail(participation=participation_key, participation_option=participation_option))
+                        parsed_activities.append(FirmActivitiesAndPermissions(activity_name=activity_name, participation=participation_list))
+                    return parsed_activities
                 else:
                     raise ValueError("Invalid response format: 'Data' field is missing or not a dictionary")
             else:

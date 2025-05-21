@@ -29,11 +29,11 @@ def main():
     # if firm_data is not None:
     #     firm_data_status = crud.save_firmdata_to_database(firm_data)
     #     if firm_data_status:
-    #         print(f"Firm data update in database for FRN: {firm_data.frn}")
+    #         print(f"Firm data update in database for FRN: {firm_data.frn\n}")
     #     else:
-    #         print(f"Failed to update firm data for FRN: {firm_data.frn}")
+    #         print(f"Failed to update firm data for FRN: {firm_data.frn\n}")
 
-    firm_names = client.get_firm_names(frn)
+    # firm_names = client.get_firm_names(frn)
     
     # if firm_names is not None:
     #     all_saved = True
@@ -56,11 +56,10 @@ def main():
     #         if not firm_address_status:
     #             print(f"Failed to save firm address for FRN: {frn}")
     #             all_saved = False
-    #     
     #     if all_saved:
-    #         print(f"Firm addresses updated in database for FRN: {frn}")
+    #         print(f"Firm addresses updated in database for FRN: {frn}\n")
     #     else:
-    #         print(f"Failed to update firm addresses for FRN: {frn}")
+    #         print(f"Failed to update firm addresses for FRN: {frn}\n")
 
 
     # firm_controlled_functions = client.get_firm_controlled_functions(frn)
@@ -68,27 +67,27 @@ def main():
     # if firm_controlled_functions is not None:
     #     controlled_functions_status = crud.save_firm_controlled_functions_to_database(firm_controlled_functions, frn=frn)
     #     if controlled_functions_status:
-    #         print(f"Controlled functions saved to database for FRN: {frn}")
+    #         print(f"Controlled functions updated in database for FRN: {frn}\n")
     #     else:
-    #         print(f"Failed to save controlled functions for FRN: {frn}")
+    #         print(f"Failed to update controlled functions for FRN: {frn}\n")
 
     # firm_activities_permissions = client.get_firm_activities_and_permissions(frn)
 
     # if firm_activities_permissions is not None:
     #     activities_permissions_status = crud.save_firm_activities_and_permissions_to_database(firm_activities_permissions, frn=frn)
     #     if activities_permissions_status:
-    #         print(f"Activities and permissions saved to database for FRN: {frn}")
+    #         print(f"Activities and permissions saved to database for FRN: {frn}\n")
     #     else:
-    #         print(f"Failed to save activities and permissions for FRN: {frn}")
+    #         print(f"Failed to save activities and permissions for FRN: {frn}\n")
 
-    # firm_requirements = client.get_firm_requirements(frn)
+    firm_requirements = client.get_firm_requirements(frn)
 
-    # if firm_requirements is not None:
-    #     requirements_status = crud.save_firm_requirements_to_database(firm_requirements, frn=frn)
-    #     if requirements_status:
-    #         print(f"Firm requirements saved to database for FRN: {frn}")
-    #     else:
-    #         print(f"Failed to save firm requirements for FRN: {frn}")
+    if firm_requirements is not None:
+        requirements_status = crud.save_firm_requirements_to_database(firm_requirements, frn=frn)
+        if requirements_status:
+            print(f"Firm requirements saved to database for FRN: {frn}")
+        else:
+            print(f"Failed to save firm requirements for FRN: {frn}")
 
     # firm_regulators = client.get_firm_regulators(frn)
 
