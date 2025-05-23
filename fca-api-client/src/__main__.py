@@ -22,7 +22,7 @@ def main():
 
     client = FCAApiClient()
     crud = database_operations()
-    frn = 204834
+    frn = 451236
     
     firm_data = client.get_firm_data(frn)
     
@@ -85,57 +85,58 @@ def main():
     if firm_requirements is not None:
         requirements_status = crud.save_firm_requirements_to_database(firm_requirements, frn=frn)
         if requirements_status:
-            print(f"Firm requirements saved to database for FRN: {frn}")
+            print(f"Firm requirements saved to database for FRN: {frn}\n")
         else:
-            print(f"Failed to save firm requirements for FRN: {frn}")
+            print(f"Failed to save firm requirements for FRN: {frn}\n")
 
     firm_requirement_references = crud.read_firm_requirement_references(frn)
-    for reference in firm_requirement_references:
-        
-        firm_investment_type = client.get_firm_investment_types(frn, reference)
+    if firm_requirement_references is not None:
+        for reference in firm_requirement_references:
+            
+            firm_investment_type = client.get_firm_investment_types(frn, reference)
 
-        if firm_investment_type is not None:
-            investment_type_status = crud.save_firm_investment_types_to_database(firm_investment_type, frn=frn)
-            if investment_type_status:
-                print(f"Firm investment types updated in database for FRN: {frn}")
-            else:
-                print(f"Failed to update firm investment types for FRN: {frn}")
+            if firm_investment_type is not None:
+                investment_type_status = crud.save_firm_investment_types_to_database(firm_investment_type, frn=frn)
+                if investment_type_status:
+                    print(f"Firm investment types updated in database for FRN: {frn}\n")
+                else:
+                    print(f"Failed to update firm investment types for FRN: {frn}\n")
 
     firm_regulators = client.get_firm_regulators(frn)
 
     if firm_regulators is not None:
         regulators_status = crud.save_firm_regulators_to_database(firm_regulators, frn=frn)
         if regulators_status:
-            print(f"Firm regulators saved to database for FRN: {frn}")
+            print(f"Firm regulators saved to database for FRN: {frn}\n")
         else:
-            print(f"Failed to save firm regulators for FRN: {frn}")
+            print(f"Failed to save firm regulators for FRN: {frn}\n")
 
     firm_waivers = client.get_firm_waiver(frn)
 
     if firm_waivers is not None:
         waivers_status = crud.save_firm_waivers_to_database(firm_waivers, frn=frn)
         if waivers_status:
-            print(f"Firm waivers saved to database for FRN: {frn}")
+            print(f"Firm waivers saved to database for FRN: {frn}\n")
         else:
-            print(f"Failed to save firm waivers for FRN: {frn}")
+            print(f"Failed to save firm waivers for FRN: {frn}\n")
 
     firm_exclusions = client.get_firm_exclusions(frn)
 
     if firm_exclusions is not None:
         exclusions_status = crud.save_firm_exclusions_to_database(firm_exclusions, frn=frn)
         if exclusions_status:
-            print(f"Firm exclusions saved to database for FRN: {frn}")
+            print(f"Firm exclusions saved to database for FRN: {frn}\n")
         else:
-            print(f"Failed to save firm exclusions for FRN: {frn}")
+            print(f"Failed to save firm exclusions for FRN: {frn}\n")
 
     firm_disciplinary_history = client.get_firm_disciplinary_history(frn)
 
     if firm_disciplinary_history is not None:
         disciplinary_history_status = crud.save_firm_disciplinary_history_to_database(firm_disciplinary_history, frn=frn)
         if disciplinary_history_status:
-            print(f"Firm disciplinary history saved to database for FRN: {frn}")
+            print(f"Firm disciplinary history saved to database for FRN: {frn}\n")
         else:
-            print(f"Failed to save firm disciplinary history for FRN: {frn}")
+            print(f"Failed to save firm disciplinary history for FRN: {frn}\n")
 
     firm_individuals = client.get_firm_individuals(frn)
 
@@ -148,26 +149,26 @@ def main():
                 for individual_data in firm_individual:
                     individual_status = crud.save_firm_individuals_to_database(individual_data, frn=frn)
                     if individual_status:
-                        print(f"Individual data saved to database for FRN: {frn}")
+                        print(f"Individual data saved to database for FRN: {frn}\n")
                     else:
-                        print(f"Failed to save individual data for FRN: {frn}")
+                        print(f"Failed to save individual data for FRN: {frn}\n")
                     
             individual_CF = client.get_individual_control_function(str(individual))
             if individual_CF is not None:
                 individual_CF_status = crud.save_individual_control_function_to_database(individual_CF, irn=str(individual))
                 if individual_CF_status:
-                    print(f"Individual control function saved to database for FRN: {frn}")
+                    print(f"Individual control function saved to database for FRN: {frn}\n")
                 else:
-                    print(f"Failed to save individual control function for FRN: {frn}")
+                    print(f"Failed to save individual control function for FRN: {frn}\n")
 
             individual_DH = client.get_individual_disciplinary_history(str(individual))
             if individual_DH is not None:
                 for individual_disciplinary_history in individual_DH:
                     individual_DH_status = crud.save_individual_disciplinary_history_to_database(individual_disciplinary_history, irn=str(individual))
                     if individual_DH_status:
-                        print(f"Individual disciplinary history saved to database for FRN: {frn}")
+                        print(f"Individual disciplinary history saved to database for FRN: {frn}\n")
                     else:
-                        print(f"Failed to save individual disciplinary history for FRN: {frn}")
+                        print(f"Failed to save individual disciplinary history for FRN: {frn}\n")
 
 
     # firm_appointed_representatives = client.get_firm_appointed_representatives(frn)

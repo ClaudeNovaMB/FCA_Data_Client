@@ -1,21 +1,17 @@
 from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction, FirmRequirement 
 from fca_models import FirmRegulator, FirmWaiver, FirmExclusion, FirmDisciplinaryHistory
-from fca_models import IndividualData, FirmAppointedRepresentative, IndividualDisciplinaryHistory, IndividualControlFunction
-from fca_models import FirmActivitiesAndPermissions
+from fca_models import IndividualData, FirmAppointedRepresentative, IndividualDisciplinaryHistory
+from fca_models import FirmActivitiesAndPermissions, IndividualControlFunction
 from sqlalchemy.orm import sessionmaker
-from config import engine  # Correctly imports engine
+from config import engine  
 from db_models import FirmTable, FirmExceptionalInfoDetailTable, FirmNamesTable, FirmAddressTable
 from db_models import FirmControlledFunctionTable, FirmActivitiesAndPermissionsTable, FirmRequirementTable
 from db_models import FirmRegulatorTable, FirmWaiverTable, FirmExclusionTable, FirmDisciplinaryHistoryTable
 from db_models import IndividualDataTable, FirmAppointedRepresentativeTable, FirmInvestmentTypeTable, Base
 from db_models import IndividualControlFunctionTable, IndividualDisciplinaryHistoryTable
-import logging
-from typing import Dict, Any, List
+from utils import setup_logging
+from typing import List
 from psycopg2.errors import UniqueViolation
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
 
 Session = sessionmaker(bind=engine)
 
@@ -37,6 +33,8 @@ def initialize_database():
 initialize_database()
 
 class database_operations:
+    def __init__(self):
+        self.crud_logger = setup_logging(log_file='Log_fca_api_crud.log', logger_name='crud_logger')
     
     def save_firmdata_to_database(self, firm_data: FirmData):
         """
@@ -83,23 +81,23 @@ class database_operations:
                         )
                         session.merge(exceptional_info_detail)
                         session.commit()
-                        logger.info(f"Exceptional info detail added for FRN: {firm_data.frn}")
+                        self.crud_logger.info(f"Exceptional info detail added for FRN: {firm_data.frn}")
                     except UniqueViolation:
                         session.rollback()
             session.merge(firm)
             session.commit()
-            logger.info(f"Firm data updated in database for FRN: {firm_data.frn}")
+            self.crud_logger.info(f"Firm data updated in database for FRN: {firm_data.frn}")
             return firm_data_status
         except UniqueViolation:
             session.rollback()
         except Exception as e:
             session.rollback()
             firm_data_status = False
-            logger.error(f"Error updating firm data to database for FRN {firm_data.frn}: {e}")
+            self.crud_logger.error(f"Error updating firm data to database for FRN {firm_data.frn}: {e}")
             return firm_data_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {firm_data.frn}")
+            self.crud_logger.info(f"Session closed for FRN: {firm_data.frn}")
 
     def save_firm_names_to_database(self, firm_names: FirmNames, frn: int):
         """
@@ -128,7 +126,7 @@ class database_operations:
                         )
                         session.add(firm_name)
                         session.commit()
-                        logger.info(f"FRN: {frn} - Current name added: {name.firm_name}")
+                        self.crud_logger.info(f"FRN: {frn} - Current name added: {name.firm_name}")
                     except UniqueViolation:
                         session.rollback()
             if firm_names.previous_names is not None:
@@ -143,19 +141,19 @@ class database_operations:
                         )
                         session.add(firm_name)
                         session.commit()
-                        logger.info(f"FRN: {frn} - Previous name added: {name.firm_name}")
+                        self.crud_logger.info(f"FRN: {frn} - Previous name added: {name.firm_name}")
                     except UniqueViolation:
                         session.rollback()
-                logger.info(f"Firm names updated in database for FRN: {frn}")
+                self.crud_logger.info(f"Firm names updated in database for FRN: {frn}")
                 return True
         except Exception as e:
             session.rollback()
             firm_name_status = False
-            logger.error(f"Error updating firm names to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error updating firm names to database for FRN {frn}: {e}")
             return firm_name_status
         finally:
             session.close()
-            logger.info(f"Session closed for Firm_Names (FRN: {frn})")
+            self.crud_logger.info(f"Session closed for Firm_Names (FRN: {frn})")
 
     def save_firm_address_to_database(self, firm_address: FirmAddress, frn: int):
         """
@@ -190,18 +188,18 @@ class database_operations:
                 )
                 session.merge(firm_address)
             session.commit()
-            logger.info(f"FRM: {frn} - New address added")
+            self.crud_logger.info(f"FRM: {frn} - New address added")
             return firm_address_status
         except UniqueViolation:
             session.rollback()
         except Exception as e:
             session.rollback()
             firm_address_status = False
-            logger.error(f"Error saving firm address to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm address to database for FRN {frn}: {e}")
             return firm_address_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_controlled_functions_to_database(self, controlled_function: FirmControlledFunction, frn: int):
         """
@@ -260,16 +258,16 @@ class database_operations:
                     except UniqueViolation:
                         session.rollback()
             
-            logger.info(f"Controlled functions updated in database for FRN: {frn}")
+            self.crud_logger.info(f"Controlled functions updated in database for FRN: {frn}")
             return controlled_functions_status
         except Exception as e:
             session.rollback()
             controlled_functions_status = False
-            logger.error(f"Error saving controlled functions to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving controlled functions to database for FRN {frn}: {e}")
             return controlled_functions_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_activities_and_permissions_to_database(self, activities_permissions: List[FirmActivitiesAndPermissions], frn: int):
         """
@@ -304,16 +302,16 @@ class database_operations:
                                 except UniqueViolation:
                                     session.rollback()
                 
-            logger.info(f"Activities and permissions updated in database for FRN: {frn}")
+            self.crud_logger.info(f"Activities and permissions updated in database for FRN: {frn}")
             return activities_permissions_status
         except Exception as e:
             session.rollback()
             activities_permissions_status = False
-            logger.error(f"Error updating activities and permissions to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error updating activities and permissions to database for FRN {frn}: {e}")
             return activities_permissions_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_requirements_to_database(self, firm_requirements: List[FirmRequirement], frn: int):
         """
@@ -345,16 +343,16 @@ class database_operations:
                     session.commit()
                 except UniqueViolation:
                     session.rollback()
-            logger.info(f"Firm requirements updated in database for FRN: {frn}")
+            self.crud_logger.info(f"Firm requirements updated in database for FRN: {frn}")
             return requirements_status
         except Exception as e:
             session.rollback()
             requirements_status = False
-            logger.error(f"Error updating firm requirements to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error updating firm requirements to database for FRN {frn}: {e}")
             return requirements_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def read_firm_requirement_references(self, frn: int) -> List[str]:
         """
@@ -376,11 +374,11 @@ class database_operations:
             requirement_references = session.query(FirmRequirementTable).filter_by(firm_frn=frn).all()
             return [str(reference.requirement_reference) for reference in requirement_references]
         except Exception as e:
-            logger.error(f"Error reading firm requirement references from database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error reading firm requirement references from database for FRN {frn}: {e}")
             return []
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_investment_types_to_database(self, firm_investment_types: List[str], frn: int):
         """
@@ -408,16 +406,16 @@ class database_operations:
                     session.commit()
                 except UniqueViolation:
                     session.rollback()
-            logger.info(f"Firm investment types saved to database for FRN: {frn}")
+            self.crud_logger.info(f"Firm investment types saved to database for FRN: {frn}")
             return investment_type_status
         except Exception as e:
             session.rollback()
             investment_type_status = False
-            logger.error(f"Error saving firm investment types to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm investment types to database for FRN {frn}: {e}")
             return investment_type_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_regulators_to_database(self, firm_regulators: List[FirmRegulator], frn: int):
         """
@@ -445,19 +443,19 @@ class database_operations:
                     )
                     session.merge(regulator_entry)
                     session.commit()
-                    logger.info(f"Firm regulators saved to database for FRN: {frn}")
+                    self.crud_logger.info(f"Firm regulators saved to database for FRN: {frn}")
                 except UniqueViolation:
                     session.rollback()
-                    logger.warning(f"Duplicate entry for regulator {regulator.regulator_name} for FRN {frn}")
+                    self.crud_logger.warning(f"Duplicate entry for regulator {regulator.regulator_name} for FRN {frn}")
             return regulators_status
         except Exception as e:
             session.rollback()
             regulators_status = False
-            logger.error(f"Error saving firm regulators to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm regulators to database for FRN {frn}: {e}")
             return regulators_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_waivers_to_database(self, firm_waivers: List[FirmWaiver], frn: int):
         """
@@ -483,15 +481,15 @@ class database_operations:
                 )
                 session.add(waiver_entry)
             session.commit()
-            logger.info(f"Firm waivers saved to database for FRN: {frn}")
+            self.crud_logger.info(f"Firm waivers saved to database for FRN: {frn}")
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm waivers to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm waivers to database for FRN {frn}: {e}")
             return False
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_exclusions_to_database(self, firm_exclusions: List[FirmExclusion], frn: int):
         """
@@ -517,15 +515,15 @@ class database_operations:
                 )
                 session.add(exclusion_entry)
             session.commit()
-            logger.info(f"Firm exclusions saved to database for FRN: {frn}")
+            self.crud_logger.info(f"Firm exclusions saved to database for FRN: {frn}")
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm exclusions to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm exclusions to database for FRN {frn}: {e}")
             return False
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_disciplinary_history_to_database(self, disciplinary_history: List[FirmDisciplinaryHistory], frn: int):
         """
@@ -552,15 +550,15 @@ class database_operations:
                 )
                 session.add(history_entry)
             session.commit()
-            logger.info(f"Firm disciplinary history saved to database for FRN: {frn}")
+            self.crud_logger.info(f"Firm disciplinary history saved to database for FRN: {frn}")
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm disciplinary history to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm disciplinary history to database for FRN {frn}: {e}")
             return False
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
 
     def save_firm_individuals_to_database(self, individual_data: IndividualData, frn: int):
         """
@@ -590,17 +588,17 @@ class database_operations:
                     )
                     session.merge(individual_entry)
                     session.commit()
-                    logger.info(f"Firm individuals saved to database for FRN: {frn} - IRN {irn}")
+                    self.crud_logger.info(f"Firm individuals saved to database for FRN: {frn} - IRN {irn}")
                 return True
             except UniqueViolation:
                 session.rollback()
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm individuals to database for FRN {frn} - IRN: {irn} : {e}")
+            self.crud_logger.error(f"Error saving firm individuals to database for FRN {frn} - IRN: {irn} : {e}")
             return False
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")
         
     def save_individual_control_function_to_database(self, individual_control_function: IndividualControlFunction, irn: str):
         """
@@ -659,16 +657,16 @@ class database_operations:
                     except UniqueViolation:
                         session.rollback()
             
-                    logger.info(f"Controlled functions updated in database for FRN: {irn}")
+                    self.crud_logger.info(f"Controlled functions updated in database for FRN: {irn}")
                 return individual_CF_status
         except Exception as e:
             session.rollback()
             individual_CF_status = False
-            logger.error(f"Error saving controlled functions to database for FRN {irn}: {e}")
+            self.crud_logger.error(f"Error saving controlled functions to database for FRN {irn}: {e}")
             return individual_CF_status
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {irn}")
+            self.crud_logger.info(f"Session closed for FRN: {irn}")
 
     def save_individual_disciplinary_history_to_database(self, disciplinary_history: IndividualDisciplinaryHistory, irn: str):
         """
@@ -696,18 +694,18 @@ class database_operations:
                 )
                 session.merge(history_entry)
                 session.commit()
-                logger.info(f"Individual disciplinary history saved to database for IRN: {irn}")
+                self.crud_logger.info(f"Individual disciplinary history saved to database for IRN: {irn}")
                 return disciplinary_history_status
         except UniqueViolation:
             session.rollback()
         except Exception as e:
             session.rollback()
             disciplinary_history_status = False
-            logger.error(f"Error saving individual disciplinary history to database for IRN {irn}: {e}")
+            self.crud_logger.error(f"Error saving individual disciplinary history to database for IRN {irn}: {e}")
             return disciplinary_history_status
         finally:
             session.close()
-            logger.info(f"Session closed for IRN: {irn}")        
+            self.crud_logger.info(f"Session closed for IRN: {irn}")        
 
     def save_firm_appointed_representatives_to_database(self, appointed_representatives: FirmAppointedRepresentative, frn: int):
         """
@@ -739,12 +737,12 @@ class database_operations:
                 session.add(previous_entry)
 
             session.commit()
-            logger.info(f"Firm appointed representatives saved to database for FRN: {frn}")
+            self.crud_logger.info(f"Firm appointed representatives saved to database for FRN: {frn}")
             return True
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm appointed representatives to database for FRN {frn}: {e}")
+            self.crud_logger.error(f"Error saving firm appointed representatives to database for FRN {frn}: {e}")
             return False
         finally:
             session.close()
-            logger.info(f"Session closed for FRN: {frn}")
+            self.crud_logger.info(f"Session closed for FRN: {frn}")

@@ -1,10 +1,8 @@
 from pydantic import BaseModel, Field, HttpUrl
 from typing import Dict, List, Optional
-from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
-
 
 class FirmAppointedRepresentativeDetail(BaseModel):
     url: HttpUrl = Field(..., alias="URL")
@@ -142,7 +140,6 @@ class FirmData(BaseModel):
     organisation_name: Optional[str] = Field(None, alias="Organisation Name")
     frn: int = Field(alias="FRN")
 
-
 class IndividualDetails(BaseModel):
     irn: Optional[str] = Field(..., alias="IRN")
     full_name: Optional[str] = Field(..., alias="Full Name")
@@ -179,8 +176,7 @@ class IndividualDisciplinaryHistory(BaseModel):
     typeof_description: str = Field(..., alias="TypeofDescription")
     typeof_action: str = Field(..., alias="TypeofAction")
     enforcement_type: str = Field(..., alias="EnforcementType")
-    action_effective_from: str = Field(..., alias="ActionEffectiveFrom")
-    
+    action_effective_from: str = Field(..., alias="ActionEffectiveFrom")   
 
 class ResultInfo(BaseModel):
     next: Optional[str] = Field(None, alias="Next")
@@ -192,21 +188,3 @@ class ApiResponse(BaseModel):
     status: str = Field(..., alias="Status")
     result_info: Optional[ResultInfo] = Field(..., alias="ResultInfo")
     message: str = Field(..., alias="Message")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

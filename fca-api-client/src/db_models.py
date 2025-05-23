@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey, create_engine
+from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -46,7 +46,6 @@ class FirmNamesTable(Base):
     name_status = Column(String, nullable=True)
     effective_from = Column(String, nullable=True)
     effective_to = Column(String, nullable=True)
-    
 
 class FirmAddressTable(Base):
     __tablename__ = 'firm_addresses'
@@ -185,7 +184,6 @@ class IndividualDataTable(Base):
     full_name = Column(String, nullable=True)
     commonly_used_name = Column(String, nullable=True)
     individual_status = Column(String, nullable=True)
-
     
 class IndividualControlFunctionTable(Base):
     __tablename__ = 'individual_control_function'
@@ -213,4 +211,3 @@ class IndividualDisciplinaryHistoryTable(Base):
     enforcement_type = Column(String, nullable=True)
     typeof_action = Column(String, nullable=True)
     typeof_description = Column(String, nullable=True)
-    

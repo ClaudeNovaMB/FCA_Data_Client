@@ -1,29 +1,43 @@
 from typing import Optional, List, Dict, Any
 import requests
-from fca_models import FirmData, FirmNames, FirmNameDetail, FirmAddress, FirmControlledFunction
+from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction
 from fca_models import FirmControlledFunctionDetail, IndividualData, FirmRequirement, FirmRegulator
 from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmAppointedRepresentative
-from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType, ApiResponse
+from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType
 from fca_models import IndividualControlFunction, IndividualControlFunctionDetail, IndividualDisciplinaryHistory
-from auth import get_auth_headers  # Import the simplified function
-from utils import rate_limiter
-import logging
-import json
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-
+from auth import get_auth_headers
+from utils import setup_logging
+import time
+from threading import Lock
 
 class FCAApiClient:
     BASE_URL = "https://register.fca.org.uk/services/V0.1"
-    
-    def __init__(self):
-        self.headers = get_auth_headers()  # Use the simplified function
-        self.rate_limit = rate_limiter(300)  # 50 requests per 10 seconds = 300 requests per minute
+    RATE_LIMIT_INTERVAL = 10  # 10 seconds
+    MAX_REQUESTS = 50
 
-    @rate_limiter(300)
+    def __init__(self):
+        self.headers = get_auth_headers()
+        self.lock = Lock()
+        self.request_timestamps = []
+        self.client_logger = setup_logging(log_file='Log_fca_api_client.log', logger_name='api_client_logger')
+
+    def _rate_limit(self):
+        """
+        Enforce a global rate limit for the client.
+        """
+        with self.lock:
+            now = time.time()
+            # Remove timestamps older than the rate limit interval
+            self.request_timestamps = [
+                ts for ts in self.request_timestamps if now - ts < self.RATE_LIMIT_INTERVAL
+            ]
+            if len(self.request_timestamps) >= self.MAX_REQUESTS:
+                # Calculate the time to wait before the next request
+                sleep_time = self.RATE_LIMIT_INTERVAL - (now - self.request_timestamps[0])
+                time.sleep(sleep_time)
+            # Add the current timestamp
+            self.request_timestamps.append(time.time())
+
     def search_firms(self, query: str) -> List[Dict[str, Any]]:
         """
         Search for firms by query string.
@@ -40,6 +54,7 @@ class FCAApiClient:
         Returns:
             List[Dict[str, Any]]: Parsed firm data from the API response.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/firms/search"
             response = requests.get(url, headers=self.headers, params={"query": query})
@@ -49,10 +64,10 @@ class FCAApiClient:
                 response.raise_for_status()
             return []  # Return an empty list as a fallback
         except requests.RequestException as e:
-            logger.error(f"Request failed: {e}")
+            self.client_logger.error(f"Request failed: {e}")
             return []
         except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}")
+            self.client_logger.error(f"An unexpected error occurred: {e}")
             return []
         return []  # Return an empty list as a fallback
     
@@ -71,13 +86,14 @@ class FCAApiClient:
         Returns:
             Optional[FirmData]: A `FirmData` object if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}"
             headers = self.headers
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 firm_data = response.json()
-                logger.info(f"Firm data retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Firm data retrieved successfully for FRN: {frn}")
                 if 'Data' in firm_data and isinstance(firm_data['Data'], list) and len(firm_data['Data']) > 0:
                     return FirmData(**firm_data['Data'][0])
                 else:
@@ -85,13 +101,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -110,12 +126,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmNames]]: A list of `FirmNames` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Names"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 firm_names_data = response.json()
-                logger.info(f"Firm names retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Firm names retrieved successfully for FRN: {frn}")
                 if 'Data' in firm_names_data and isinstance(firm_names_data['Data'], list) and len(firm_names_data['Data']) > 0:
                     return [FirmNames(**name) for name in firm_names_data['Data']]
                 else:
@@ -123,13 +140,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
     
@@ -148,12 +165,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmAddress]]: A list of `FirmAddress` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Address"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 firm_addresses_data = response.json()
-                logger.info(f"Firm addresses retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Firm addresses retrieved successfully for FRN: {frn}")
                 if 'Data' in firm_addresses_data and isinstance(firm_addresses_data['Data'], list) and len(firm_addresses_data['Data']) > 0: 
                     return [FirmAddress(**address) for address in firm_addresses_data['Data']]
                 else:
@@ -161,13 +179,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -186,12 +204,13 @@ class FCAApiClient:
         Returns:
             Optional[FirmControlledFunction]: A `FirmControlledFunction` object if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/CF"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 controlled_functions_data = response.json()
-                logger.info(f"Controlled functions retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Controlled functions retrieved successfully for FRN: {frn}")
                 if 'Data' in controlled_functions_data and isinstance(controlled_functions_data['Data'], list) and len(controlled_functions_data['Data']) > 0:
                     # Map the response data to the FirmControlledFunction model
                     data = controlled_functions_data['Data'][0]
@@ -203,13 +222,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -228,12 +247,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmActivitiesAndPermissions]]: A list of `FirmActivitiesAndPermissions` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Permissions"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 activities_permissions_data = response.json()
-                logger.info(f"Activities and permissions retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Activities and permissions retrieved successfully for FRN: {frn}")
                 if 'Data' in activities_permissions_data and isinstance(activities_permissions_data['Data'], dict):
                     parsed_activities = []
                     for activity_name, details in activities_permissions_data['Data'].items():
@@ -248,13 +268,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -273,12 +293,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmRequirement]]: A list of `FirmRequirement` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Requirements"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 requirements_data = response.json()
-                logger.info(f"Requirements retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Requirements retrieved successfully for FRN: {frn}")
                 if 'Data' in requirements_data and isinstance(requirements_data['Data'], list) and len(requirements_data['Data']) > 0:
                     return [FirmRequirement(**requirement) for requirement in requirements_data['Data']]
                 else:
@@ -286,13 +307,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -312,33 +333,34 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmInvestmentType]]: A list of `FirmInvestmentType` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Requirements/{reference}/InvestmentTypes"
             response = requests.get(url, headers=self.headers)
 
             if response.status_code == 200:
                 investment_types_data = response.json()
-                logger.info(f"Investment types retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Investment types retrieved successfully for FRN: {frn}")
                 if investment_types_data['Message'] != "Investment Types not found":
                     if 'Data' in investment_types_data and isinstance(investment_types_data['Data'], list) and len(investment_types_data['Data']) > 0:
                         return [FirmInvestmentType(**investment_type) for investment_type in investment_types_data['Data']]
                     else:
                         raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
                 else:
-                    logger.warning(f"Investment types not found for FRN: {frn}")
+                    self.client_logger.warning(f"Investment types not found for FRN: {frn}")
                     return None
 
             else:
                 response.raise_for_status()
 
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None
 
@@ -357,12 +379,13 @@ class FCAApiClient:
         Returns:
             Optional[List[IndividualData]]: A list of `IndividualData` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Individuals"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 individuals_data = response.json()
-                logger.info(f"Individuals retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Individuals retrieved successfully for FRN: {frn}")
                 if 'Data' in individuals_data:
                     return [individual['IRN'] for individual in individuals_data['Data']]
                 else:
@@ -370,30 +393,40 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
     
     def get_individual_data(self, irn: str) -> Optional[List[IndividualData]]:
-
-        url = f"{self.BASE_URL}/Individuals/{irn}"
-        response = requests.get(url, headers=self.headers)
-        if response.status_code == 200:
-            individual_data = response.json()
-            logger.info(f"Individual data retrieved successfully for IRN: {irn}")
-            if 'Data' in individual_data and isinstance(individual_data['Data'], list):
-                return [IndividualData(**name) for name in individual_data['Data']]
-            else:
-                raise ValueError("Invalid response format: 'Data' field is missing or not a list")
-        else:   
-            response.raise_for_status()
-        return None  # Return None as a fallback
+        self._rate_limit()
+        try:
+            url = f"{self.BASE_URL}/Individuals/{irn}"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                individual_data = response.json()
+                self.client_logger.info(f"Individual data retrieved successfully for IRN: {irn}")
+                if 'Data' in individual_data and isinstance(individual_data['Data'], list):
+                    return [IndividualData(**name) for name in individual_data['Data']]
+                else:
+                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+            else:   
+                response.raise_for_status()
+            return None  # Return None as a fallback
+        except requests.RequestException as e:
+            self.client_logger.error(f"Request failed for IRN {irn}: {e}")
+            return None
+        except ValueError as e:
+            self.client_logger.error(f"Value error for IRN {irn}: {e}")
+            return None
+        except Exception as e:
+            self.client_logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
+            return None
 
     def get_firm_regulators(self, frn: int) -> Optional[List[FirmRegulator]]:
         """
@@ -410,12 +443,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmRegulator]]: A list of `FirmRegulator` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Regulators"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 regulators_data = response.json()
-                logger.info(f"Regulators retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Regulators retrieved successfully for FRN: {frn}")
                 if 'Data' in regulators_data and isinstance(regulators_data['Data'], list) and len(regulators_data['Data']) > 0:
                     return [FirmRegulator(**regulator) for regulator in regulators_data['Data']]
                 else:
@@ -423,13 +457,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -448,30 +482,31 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmWaiver]]: A list of `FirmWaiver` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Waivers"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 waivers_data = response.json()
-                logger.info(f"Waivers retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Waivers retrieved successfully for FRN: {frn}")
                 if waivers_data['Message'] != "Waivers not found":
                     if 'Data' in waivers_data and isinstance(waivers_data['Data'], list) and len(waivers_data['Data']) > 0:
                         return [FirmWaiver(**waiver) for waiver in waivers_data['Data']]
                     else:
                         raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
                 else:
-                    logger.warning(f"Waivers not found for FRN: {frn}")
+                    self.client_logger.warning(f"Waivers not found for FRN: {frn}")
                     return None
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -490,12 +525,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmExclusion]]: A list of `FirmExclusion` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Exclusions"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 exclusions_data = response.json()
-                logger.info(f"Exclusions retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Exclusions retrieved successfully for FRN: {frn}")
                 if 'Data' in exclusions_data and isinstance(exclusions_data['Data'], list) and len(exclusions_data['Data']) > 0:
                     return [FirmExclusion(**exclusion) for exclusion in exclusions_data['Data']]
                 else:
@@ -503,13 +539,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -528,12 +564,13 @@ class FCAApiClient:
         Returns:
             Optional[List[FirmDisciplinaryHistory]]: A list of `FirmDisciplinaryHistory` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/DisciplinaryHistory"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 disciplinary_data = response.json()
-                logger.info(f"Disciplinary history retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Disciplinary history retrieved successfully for FRN: {frn}")
                 if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
                     return [FirmDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
                 else:
@@ -541,13 +578,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -566,12 +603,13 @@ class FCAApiClient:
         Returns:
             Optional[FirmAppointedRepresentative]: A `FirmAppointedRepresentative` object if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/AR"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 appointed_representatives_data = response.json()
-                logger.info(f"Appointed representatives retrieved successfully for FRN: {frn}")
+                self.client_logger.info(f"Appointed representatives retrieved successfully for FRN: {frn}")
                 if 'Data' in appointed_representatives_data and isinstance(appointed_representatives_data['Data'], dict):
                     return FirmAppointedRepresentative(**appointed_representatives_data['Data'])
                 else:
@@ -579,13 +617,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for FRN {frn}: {e}")
+            self.client_logger.error(f"Request failed for FRN {frn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for FRN {frn}: {e}")
+            self.client_logger.error(f"Value error for FRN {frn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
         return None  # Return None as a fallback
 
@@ -604,12 +642,13 @@ class FCAApiClient:
         Returns:
             Optional[List[IndividualControlFunctionTable]]: A list of `IndividualControlFunctionTable` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Individuals/{irn}/CF"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 control_functions_data = response.json()
-                logger.info(f"Control functions retrieved successfully for IRN: {irn}")
+                self.client_logger.info(f"Control functions retrieved successfully for IRN: {irn}")
                 if 'Data' in control_functions_data and isinstance(control_functions_data['Data'], list):
                     data = control_functions_data['Data'][0]
                     current = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
@@ -620,13 +659,13 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for IRN {irn}: {e}")
+            self.client_logger.error(f"Request failed for IRN {irn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for IRN {irn}: {e}")
+            self.client_logger.error(f"Value error for IRN {irn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
             return None
         return None
     
@@ -645,12 +684,13 @@ class FCAApiClient:
         Returns:
             Optional[List[IndividualDisciplinaryHistory]]: A list of `IndividualDisciplinaryHistory` objects if the request is successful, otherwise None.
         """
+        self._rate_limit()
         try:
             url = f"{self.BASE_URL}/Individuals/{irn}/DisciplinaryHistory"
             response = requests.get(url, headers=self.headers)
             if response.status_code == 200:
                 disciplinary_data = response.json()
-                logger.info(f"Disciplinary history retrieved successfully for IRN: {irn}")
+                self.client_logger.info(f"Disciplinary history retrieved successfully for IRN: {irn}")
                 if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
                     return [IndividualDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
                 else:
@@ -658,16 +698,12 @@ class FCAApiClient:
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
-            logger.error(f"Request failed for IRN {irn}: {e}")
+            self.client_logger.error(f"Request failed for IRN {irn}: {e}")
             return None
         except ValueError as e:
-            logger.error(f"Value error for IRN {irn}: {e}")
+            self.client_logger.error(f"Value error for IRN {irn}: {e}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
+            self.client_logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
             return None
         return None
-
-
-
-
