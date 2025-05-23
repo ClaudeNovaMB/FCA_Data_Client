@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Any
 import requests
-from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction
+from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction, FirmQuery
 from fca_models import FirmControlledFunctionDetail, IndividualData, FirmRequirement, FirmRegulator
 from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmAppointedRepresentative
 from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType
@@ -38,7 +38,7 @@ class FCAApiClient:
             # Add the current timestamp
             self.request_timestamps.append(time.time())
 
-    def search_firms(self, query: str) -> List[Dict[str, Any]]:
+    def search_firms(self, query: str) -> Optional[List[FirmQuery]]:
         """
         Search for firms by query string.
 
@@ -56,10 +56,24 @@ class FCAApiClient:
         """
         self._rate_limit()
         try:
-            url = f"{self.BASE_URL}/firms/search"
-            response = requests.get(url, headers=self.headers, params={"query": query})
+            # Construct the URL for the search endpoint
+            'Example : Search?q=Example Ltd&type=firm'
+            url = f"{self.BASE_URL}/Search"
+            params = {'q': query, 'type': 'firm'}
+            response = requests.get(url, headers=self.headers , params=params)
             if response.status_code == 200:
-                return response.json()
+                raw_output = response.json()
+                self.client_logger.info(f"Search results retrieved successfully for query: {query}")
+                if raw_output['Data'] is None:
+                    self.client_logger.warning(f"No data found for query: {query}")
+                    self.client_logger.warning(f"API MESSAGE: {raw_output['Message']}")
+                    return []
+                else:
+                    if 'Data' in raw_output and isinstance(raw_output['Data'], list) and len(raw_output['Data']) > 0:
+                        return [FirmQuery(**item) for item in raw_output['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+
             else:
                 response.raise_for_status()
             return []  # Return an empty list as a fallback

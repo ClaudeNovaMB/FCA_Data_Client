@@ -139,6 +139,13 @@ class FirmData(BaseModel):
     organisation_name: Optional[str] = Field(None, alias="Organisation Name")
     frn: int = Field(alias="FRN")
 
+class FirmQuery(BaseModel):
+    #convert frn from string to integer
+    reference: Optional[str] = Field(..., alias="Reference Number")
+    status: Optional[str] = Field(..., alias="Status")
+    type_of_business_or_individual: Optional[str] = Field(..., alias="Type of business or Individual")
+    name: Optional[str] = Field(..., alias="Name")
+
 class IndividualDetails(BaseModel):
     irn: Optional[str] = Field(..., alias="IRN")
     full_name: Optional[str] = Field(..., alias="Full Name")
