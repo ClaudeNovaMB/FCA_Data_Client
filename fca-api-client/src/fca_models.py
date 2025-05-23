@@ -142,32 +142,18 @@ class FirmData(BaseModel):
     organisation_name: Optional[str] = Field(None, alias="Organisation Name")
     frn: int = Field(alias="FRN")
 
-class IndividualData(BaseModel):
-    #convert irn from string to integer
-    irn: int = Field(..., alias="IRN")
-    full_name: str = Field(..., alias="Full Name")
-    commonly_used_name: Optional[str] = Field(None, alias="Commonly Used Name")
-    name: str = Field(..., alias="Name")
-    role: str = Field(..., alias="Role")
-    individual_status: str = Field(..., alias="Individual Status")
-    registration_date: str = Field(..., alias="Registration Date")
-    termination_date: Optional[str] = Field(None, alias="Termination Date")
-    message: str = Field(..., alias="Message")
-    data: List[FirmData] = Field(..., alias="Data")
 
 class IndividualDetails(BaseModel):
-    work_status: str = Field(..., alias="Status")
-    irn: str = Field(..., alias="IRN")
-    commonly_used_name: str = Field(..., alias="Commonly Used Name")
-    full_name: str = Field(..., alias="Full Name")
+    irn: Optional[str] = Field(..., alias="IRN")
+    full_name: Optional[str] = Field(..., alias="Full Name")
+    commonly_used_name: Optional[str] = Field(..., alias="Commonly Used Name")
+    individual_status: Optional[str] = Field(..., alias="Status")
+    disciplinary_history: Optional[str] = Field(None, alias="Disciplinary History")
+    current_roles_activities: Optional[str] = Field(None, alias="Current roles & activities")
 
-class IndividualWorkplaceLocation(BaseModel):
-    firm_name: str = Field(..., alias="Firm Name")
-    location_1: str = Field(..., alias="Location 1")
-
-class IndividualDataDetails(BaseModel):
-    details: IndividualDetails = Field(..., alias="Details")
-    workplace_location_1: IndividualWorkplaceLocation = Field(..., alias="Workplace Location 1")
+class IndividualData(BaseModel):
+    #convert irn from string to integer
+    individual_data: Optional[IndividualDetails] = Field(..., alias="Details")
 
 class IndividualControlFunctionDetail(BaseModel):
     customer_engagement_method: Optional[str] = Field(None, alias="Customer Engagement Method")
@@ -177,7 +163,7 @@ class IndividualControlFunctionDetail(BaseModel):
     restriction: Optional[str] = Field(None, alias="Restriction")
     effective_date: Optional[str] = Field(None, alias="Effective Date")
     firm_name: Optional[str] = Field(None, alias="Firm Name")
-    name: Optional[str] = Field(None, alias="Name")
+    role_name: Optional[str] = Field(None, alias="Name")
 
 class IndividualControlFunction(BaseModel):
     current: Optional[Dict[str, IndividualControlFunctionDetail]] = Field(default_factory=dict, alias="Current")
@@ -190,19 +176,22 @@ class IndividualDisciplinaryHistoryDetail(BaseModel):
     action_effective_from: str = Field(..., alias="ActionEffectiveFrom")
 
 class IndividualDisciplinaryHistory(BaseModel):
-    data: List[IndividualDisciplinaryHistoryDetail] = Field(default_factory=list, alias="Data")
+    typeof_description: str = Field(..., alias="TypeofDescription")
+    typeof_action: str = Field(..., alias="TypeofAction")
+    enforcement_type: str = Field(..., alias="EnforcementType")
+    action_effective_from: str = Field(..., alias="ActionEffectiveFrom")
+    
 
 class ResultInfo(BaseModel):
-    next: Optional[HttpUrl] = Field(None, alias="Next")
+    next: Optional[str] = Field(None, alias="Next")
     page: str = Field(..., alias="page")
     per_page: str = Field(..., alias="per_page")
     total_count: str = Field(..., alias="total_count")
 
 class ApiResponse(BaseModel):
     status: str = Field(..., alias="Status")
-    result_info: ResultInfo = Field(..., alias="ResultInfo")
+    result_info: Optional[ResultInfo] = Field(..., alias="ResultInfo")
     message: str = Field(..., alias="Message")
-    data: List[FirmData] = Field(..., alias="Data")
 
 
 

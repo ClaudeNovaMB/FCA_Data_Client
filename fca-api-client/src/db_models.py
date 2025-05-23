@@ -180,28 +180,22 @@ class IndividualDataTable(Base):
     __tablename__ = 'individual_data'
     __table_args__ = {'schema': 'fcadata'}
     
-    irn = Column(Integer, primary_key=True, unique=True)
-    status = Column(String, nullable=False)
-    person_name = Column(String, nullable=False)
+    frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
+    irn = Column(String, primary_key=True, unique=True)
+    full_name = Column(String, nullable=True)
     commonly_used_name = Column(String, nullable=True)
-    full_name = Column(String, nullable=False)
-    termination_date = Column(String, nullable=True)
-    frn = Column(String, ForeignKey('fcadata.firms.frn'), nullable=False)
-    firm_name = Column(String, nullable=True)
-    location_1 = Column(String, nullable=True)  # JSON or serialized data for IndividualWorkplaceLocation
-    registration_date = Column(String, nullable=True)
-    firm_role = Column(String, nullable=True)
-    work_status = Column(String, nullable=True)
     individual_status = Column(String, nullable=True)
+
     
 class IndividualControlFunctionTable(Base):
     __tablename__ = 'individual_control_function'
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    irn = Column(Integer, ForeignKey('individual_data.irn'), nullable=False)
-    person_name = Column(String, nullable=True)
+    irn = Column(String, ForeignKey('fcadata.individual_data.irn'), nullable=False)
+    role_name = Column(String, nullable=True)
     firm_name = Column(String, nullable=True)
+    control_status = Column(String, nullable=True) 
     effective_date = Column(String, nullable=True)
     end_date = Column(String, nullable=True)
     customer_engagement_method = Column(String, nullable=True)
@@ -214,8 +208,9 @@ class IndividualDisciplinaryHistoryTable(Base):
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    irn = Column(Integer, ForeignKey('individual_data.irn'), nullable=False)
-    typeof_description = Column(String, nullable=False)
-    typeof_action = Column(String, nullable=False)
-    enforcement_type = Column(String, nullable=False)
-    action_effective_from = Column(String, nullable=False)
+    irn = Column(String, ForeignKey('fcadata.individual_data.irn'), nullable=False)
+    action_effective_from = Column(String, nullable=True)
+    enforcement_type = Column(String, nullable=True)
+    typeof_action = Column(String, nullable=True)
+    typeof_description = Column(String, nullable=True)
+    

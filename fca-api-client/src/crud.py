@@ -1,6 +1,6 @@
 from fca_models import FirmData, FirmNames, FirmAddress, FirmControlledFunction, FirmRequirement 
 from fca_models import FirmRegulator, FirmWaiver, FirmExclusion, FirmDisciplinaryHistory
-from fca_models import IndividualData, FirmAppointedRepresentative
+from fca_models import IndividualData, FirmAppointedRepresentative, IndividualDisciplinaryHistory, IndividualControlFunction
 from fca_models import FirmActivitiesAndPermissions
 from sqlalchemy.orm import sessionmaker
 from config import engine  # Correctly imports engine
@@ -8,6 +8,7 @@ from db_models import FirmTable, FirmExceptionalInfoDetailTable, FirmNamesTable,
 from db_models import FirmControlledFunctionTable, FirmActivitiesAndPermissionsTable, FirmRequirementTable
 from db_models import FirmRegulatorTable, FirmWaiverTable, FirmExclusionTable, FirmDisciplinaryHistoryTable
 from db_models import IndividualDataTable, FirmAppointedRepresentativeTable, FirmInvestmentTypeTable, Base
+from db_models import IndividualControlFunctionTable, IndividualDisciplinaryHistoryTable
 import logging
 from typing import Dict, Any, List
 from psycopg2.errors import UniqueViolation
@@ -80,19 +81,21 @@ class database_operations:
                             exceptional_info_title=info.exceptional_info_title,
                             exceptional_info_body=info.exceptional_info_body
                         )
-                        session.add(exceptional_info_detail)
+                        session.merge(exceptional_info_detail)
                         session.commit()
                         logger.info(f"Exceptional info detail added for FRN: {firm_data.frn}")
                     except UniqueViolation:
                         session.rollback()
-            session.add(firm)
+            session.merge(firm)
             session.commit()
-            logger.info(f"Firm data saved to database for FRN: {firm_data.frn}")
+            logger.info(f"Firm data updated in database for FRN: {firm_data.frn}")
             return firm_data_status
+        except UniqueViolation:
+            session.rollback()
         except Exception as e:
             session.rollback()
             firm_data_status = False
-            logger.error(f"Error saving firm data to database for FRN {firm_data.frn}: {e}")
+            logger.error(f"Error updating firm data to database for FRN {firm_data.frn}: {e}")
             return firm_data_status
         finally:
             session.close()
@@ -301,12 +304,12 @@ class database_operations:
                                 except UniqueViolation:
                                     session.rollback()
                 
-            logger.info(f"Activities and permissions saved to database for FRN: {frn}")
+            logger.info(f"Activities and permissions updated in database for FRN: {frn}")
             return activities_permissions_status
         except Exception as e:
             session.rollback()
             activities_permissions_status = False
-            logger.error(f"Error saving activities and permissions to database for FRN {frn}: {e}")
+            logger.error(f"Error updating activities and permissions to database for FRN {frn}: {e}")
             return activities_permissions_status
         finally:
             session.close()
@@ -342,12 +345,12 @@ class database_operations:
                     session.commit()
                 except UniqueViolation:
                     session.rollback()
-            logger.info(f"Firm requirements saved to database for FRN: {frn}")
+            logger.info(f"Firm requirements updated in database for FRN: {frn}")
             return requirements_status
         except Exception as e:
             session.rollback()
             requirements_status = False
-            logger.error(f"Error saving firm requirements to database for FRN {frn}: {e}")
+            logger.error(f"Error updating firm requirements to database for FRN {frn}: {e}")
             return requirements_status
         finally:
             session.close()
@@ -371,7 +374,7 @@ class database_operations:
         session = Session()
         try:
             requirement_references = session.query(FirmRequirementTable).filter_by(firm_frn=frn).all()
-            return [reference.requirement_reference for reference in requirement_references]
+            return [str(reference.requirement_reference) for reference in requirement_references]
         except Exception as e:
             logger.error(f"Error reading firm requirement references from database for FRN {frn}: {e}")
             return []
@@ -431,21 +434,27 @@ class database_operations:
         """
         session = Session()
         try:
+            regulators_status = True
             for regulator in firm_regulators:
-                regulator_entry = FirmRegulatorTable(
-                    termination_date=regulator.termination_date,
-                    effective_date=regulator.effective_date,
-                    regulator_name=regulator.regulator_name,
-                    firm_frn=frn
-                )
-                session.add(regulator_entry)
-            session.commit()
-            logger.info(f"Firm regulators saved to database for FRN: {frn}")
-            return True
+                try:
+                    regulator_entry = FirmRegulatorTable(
+                        termination_date=regulator.termination_date,
+                        effective_date=regulator.effective_date,
+                        regulator_name=regulator.regulator_name,
+                        firm_frn=frn
+                    )
+                    session.merge(regulator_entry)
+                    session.commit()
+                    logger.info(f"Firm regulators saved to database for FRN: {frn}")
+                except UniqueViolation:
+                    session.rollback()
+                    logger.warning(f"Duplicate entry for regulator {regulator.regulator_name} for FRN {frn}")
+            return regulators_status
         except Exception as e:
             session.rollback()
+            regulators_status = False
             logger.error(f"Error saving firm regulators to database for FRN {frn}: {e}")
-            return False
+            return regulators_status
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")
@@ -553,7 +562,7 @@ class database_operations:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")
 
-    def save_firm_individuals_to_database(self, firm_individuals: List[IndividualData], frn: int):
+    def save_firm_individuals_to_database(self, individual_data: IndividualData, frn: int):
         """
         Save firm individuals to the database.
 
@@ -567,30 +576,138 @@ class database_operations:
             frn (int): The Firm Reference Number.
         """
         session = Session()
+        irn = individual_data.individual_data.irn if individual_data.individual_data else None
         try:
-            for individual in firm_individuals:
-                individual_entry = IndividualDataTable(
-                    irn=individual.irn,
-                    full_name=individual.full_name,
-                    commonly_used_name=individual.commonly_used_name,
-                    name=individual.name,
-                    role=individual.role,
-                    individual_status=individual.individual_status,
-                    registration_date=individual.registration_date,
-                    termination_date=individual.termination_date,
-                    frn=frn
-                )
-                session.add(individual_entry)
-            session.commit()
-            logger.info(f"Firm individuals saved to database for FRN: {frn}")
-            return True
+            try:
+
+                if individual_data.individual_data is not None:
+                    individual_entry = IndividualDataTable(
+                        frn=frn,
+                        irn=individual_data.individual_data.irn,
+                        full_name=individual_data.individual_data.full_name,
+                        commonly_used_name=individual_data.individual_data.commonly_used_name,
+                        individual_status=individual_data.individual_data.individual_status
+                    )
+                    session.merge(individual_entry)
+                    session.commit()
+                    logger.info(f"Firm individuals saved to database for FRN: {frn} - IRN {irn}")
+                return True
+            except UniqueViolation:
+                session.rollback()
         except Exception as e:
             session.rollback()
-            logger.error(f"Error saving firm individuals to database for FRN {frn}: {e}")
+            logger.error(f"Error saving firm individuals to database for FRN {frn} - IRN: {irn} : {e}")
             return False
         finally:
             session.close()
             logger.info(f"Session closed for FRN: {frn}")
+        
+    def save_individual_control_function_to_database(self, individual_control_function: IndividualControlFunction, irn: str):
+        """
+        Save individual control functions to the database.
+
+        This function creates new `IndividualControlFunctionTable` SQLAlchemy objects and saves them to the database.
+        It depends on:
+        - The `Session` object from SQLAlchemy for database transactions.
+        - The `IndividualControlFunctionTable` SQLAlchemy model to represent the database table.
+
+        Args:
+            individual_control_function (List[FirmControlledFunction]): The list of individual control functions to be saved.
+            frn (int): The Firm Reference Number.
+        """
+        session = Session()
+        try:
+            individual_CF_status = True
+            # Save current controlled functions if available
+            if individual_control_function.current:
+                for key, detail in individual_control_function.current.items():
+                    try:
+                        control_function_entry = IndividualControlFunctionTable(
+                            irn=irn,
+                            role_name=detail.role_name,
+                            firm_name=detail.firm_name,
+                            control_status='current',
+                            effective_date=detail.effective_date,
+                            end_date=detail.end_date,
+                            customer_engagement_method=detail.customer_engagement_method,
+                            suspension_restriction_start_date=detail.suspension_restriction_start_date,
+                            suspension_restriction_end_date=detail.suspension_restriction_end_date,
+                            restriction=detail.restriction
+                        )
+                        session.merge(control_function_entry)
+                        session.commit()
+                    except UniqueViolation:
+                        session.rollback()
+            # Save previous controlled functions if available
+            if individual_control_function.previous:
+                for key, detail in individual_control_function.previous.items():
+                    try:
+                        control_function_entry = IndividualControlFunctionTable(
+                            irn=irn,
+                            role_name=detail.role_name,
+                            firm_name=detail.firm_name,
+                            control_status='previous',
+                            effective_date=detail.effective_date,
+                            end_date=detail.end_date,
+                            customer_engagement_method=detail.customer_engagement_method,
+                            suspension_restriction_start_date=detail.suspension_restriction_start_date,
+                            suspension_restriction_end_date=detail.suspension_restriction_end_date,
+                            restriction=detail.restriction
+                        )
+                        session.merge(control_function_entry)
+                        session.commit()
+                    except UniqueViolation:
+                        session.rollback()
+            
+                    logger.info(f"Controlled functions updated in database for FRN: {irn}")
+                return individual_CF_status
+        except Exception as e:
+            session.rollback()
+            individual_CF_status = False
+            logger.error(f"Error saving controlled functions to database for FRN {irn}: {e}")
+            return individual_CF_status
+        finally:
+            session.close()
+            logger.info(f"Session closed for FRN: {irn}")
+
+    def save_individual_disciplinary_history_to_database(self, disciplinary_history: IndividualDisciplinaryHistory, irn: str):
+        """
+        Save individual disciplinary history to the database.
+
+        This function creates new `IndividualDisciplinaryHistoryTable` SQLAlchemy objects and saves them to the database.
+        It depends on:
+        - The `Session` object from SQLAlchemy for database transactions.
+        - The `IndividualDisciplinaryHistoryTable` SQLAlchemy model to represent the database table.
+
+        Args:
+            disciplinary_history (List[IndividualDisciplinaryHistory]): The list of individual disciplinary history to be saved.
+            irn (str): The Individual Reference Number.
+        """
+        session = Session()
+        try:
+            disciplinary_history_status = True
+            if disciplinary_history is not None:
+                history_entry = IndividualDisciplinaryHistoryTable(
+                    irn=irn,
+                    typeof_description=disciplinary_history.typeof_description,
+                    typeof_action=disciplinary_history.typeof_action,
+                    enforcement_type=disciplinary_history.enforcement_type,
+                    action_effective_from=disciplinary_history.action_effective_from
+                )
+                session.merge(history_entry)
+                session.commit()
+                logger.info(f"Individual disciplinary history saved to database for IRN: {irn}")
+                return disciplinary_history_status
+        except UniqueViolation:
+            session.rollback()
+        except Exception as e:
+            session.rollback()
+            disciplinary_history_status = False
+            logger.error(f"Error saving individual disciplinary history to database for IRN {irn}: {e}")
+            return disciplinary_history_status
+        finally:
+            session.close()
+            logger.info(f"Session closed for IRN: {irn}")        
 
     def save_firm_appointed_representatives_to_database(self, appointed_representatives: FirmAppointedRepresentative, frn: int):
         """

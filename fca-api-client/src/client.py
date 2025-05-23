@@ -3,7 +3,8 @@ import requests
 from fca_models import FirmData, FirmNames, FirmNameDetail, FirmAddress, FirmControlledFunction
 from fca_models import FirmControlledFunctionDetail, IndividualData, FirmRequirement, FirmRegulator
 from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmAppointedRepresentative
-from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType
+from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType, ApiResponse
+from fca_models import IndividualControlFunction, IndividualControlFunctionDetail, IndividualDisciplinaryHistory
 from auth import get_auth_headers  # Import the simplified function
 from utils import rate_limiter
 import logging
@@ -295,7 +296,7 @@ class FCAApiClient:
             return None
         return None  # Return None as a fallback
 
-    def get_firm_investment_types(self, frn: int, reference: str) -> Optional[List[FirmInvestmentType]]:
+    def get_firm_investment_types(self, frn: int, reference: str) -> Optional[List]:
         """
         Retrieve the investment types associated with a specific firm by its Firm Reference Number (FRN).
 
@@ -305,23 +306,31 @@ class FCAApiClient:
         - The `FirmInvestmentType` Pydantic model to parse the API response.
 
         Args:
-            frn (str): The Firm Reference Number.
+            frn (int): The Firm Reference Number.
+            reference (str): The reference identifier for the investment types.
 
         Returns:
             Optional[List[FirmInvestmentType]]: A list of `FirmInvestmentType` objects if the request is successful, otherwise None.
         """
         try:
-            url = f"{self.BASE_URL}/Firm/{frn}/Requirements/{reference}/InvestmentType"
+            url = f"{self.BASE_URL}/Firm/{frn}/Requirements/{reference}/InvestmentTypes"
             response = requests.get(url, headers=self.headers)
+
             if response.status_code == 200:
                 investment_types_data = response.json()
                 logger.info(f"Investment types retrieved successfully for FRN: {frn}")
-                if 'Data' in investment_types_data and isinstance(investment_types_data['Data'], list) and len(investment_types_data['Data']) > 0:
-                    return [FirmInvestmentType(**investment_type) for investment_type in investment_types_data['Data']]
+                if investment_types_data['Message'] != "Investment Types not found":
+                    if 'Data' in investment_types_data and isinstance(investment_types_data['Data'], list) and len(investment_types_data['Data']) > 0:
+                        return [FirmInvestmentType(**investment_type) for investment_type in investment_types_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    logger.warning(f"Investment types not found for FRN: {frn}")
+                    return None
+
             else:
                 response.raise_for_status()
+
         except requests.RequestException as e:
             logger.error(f"Request failed for FRN {frn}: {e}")
             return None
@@ -340,13 +349,13 @@ class FCAApiClient:
         This function sends a GET request to the FCA API's firm individuals endpoint to fetch
         detailed information about the firm's individuals. It depends on:
         - The `requests` library for making HTTP requests.
-        - The `FirmIndividualData` Pydantic model to parse the API response.
+        - The `IndividualData` Pydantic model to parse the API response.
 
         Args:
             frn (str): The Firm Reference Number.
 
         Returns:
-            Optional[List[FirmIndividualData]]: A list of `FirmIndividualData` objects if the request is successful, otherwise None.
+            Optional[List[IndividualData]]: A list of `IndividualData` objects if the request is successful, otherwise None.
         """
         try:
             url = f"{self.BASE_URL}/Firm/{frn}/Individuals"
@@ -354,8 +363,8 @@ class FCAApiClient:
             if response.status_code == 200:
                 individuals_data = response.json()
                 logger.info(f"Individuals retrieved successfully for FRN: {frn}")
-                if 'Data' in individuals_data and isinstance(individuals_data['Data'], list) and len(individuals_data['Data']) > 0:
-                    return [IndividualData(**individual) for individual in individuals_data['Data']]
+                if 'Data' in individuals_data:
+                    return [individual['IRN'] for individual in individuals_data['Data']]
                 else:
                     raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
@@ -369,6 +378,21 @@ class FCAApiClient:
         except Exception as e:
             logger.error(f"An unexpected error occurred for FRN {frn}: {e}")
             return None
+        return None  # Return None as a fallback
+    
+    def get_individual_data(self, irn: str) -> Optional[List[IndividualData]]:
+
+        url = f"{self.BASE_URL}/Individuals/{irn}"
+        response = requests.get(url, headers=self.headers)
+        if response.status_code == 200:
+            individual_data = response.json()
+            logger.info(f"Individual data retrieved successfully for IRN: {irn}")
+            if 'Data' in individual_data and isinstance(individual_data['Data'], list):
+                return [IndividualData(**name) for name in individual_data['Data']]
+            else:
+                raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+        else:   
+            response.raise_for_status()
         return None  # Return None as a fallback
 
     def get_firm_regulators(self, frn: int) -> Optional[List[FirmRegulator]]:
@@ -430,10 +454,14 @@ class FCAApiClient:
             if response.status_code == 200:
                 waivers_data = response.json()
                 logger.info(f"Waivers retrieved successfully for FRN: {frn}")
-                if 'Data' in waivers_data and isinstance(waivers_data['Data'], list) and len(waivers_data['Data']) > 0:
-                    return [FirmWaiver(**waiver) for waiver in waivers_data['Data']]
+                if waivers_data['Message'] != "Waivers not found":
+                    if 'Data' in waivers_data and isinstance(waivers_data['Data'], list) and len(waivers_data['Data']) > 0:
+                        return [FirmWaiver(**waiver) for waiver in waivers_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    logger.warning(f"Waivers not found for FRN: {frn}")
+                    return None
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -561,6 +589,84 @@ class FCAApiClient:
             return None
         return None  # Return None as a fallback
 
+    def get_individual_control_function(self, irn: str) -> Optional[IndividualControlFunction]:
+        """
+        Retrieve the control functions associated with a specific individual by their Individual Reference Number (IRN).
+
+        This function sends a GET request to the FCA API's individual control functions endpoint to fetch
+        detailed information about an individual's control functions. It depends on:
+        - The `requests` library for making HTTP requests.
+        - The `IndividualControlFunctionTable` Pydantic model to parse the API response.
+
+        Args:
+            irn (str): The Individual Reference Number.
+
+        Returns:
+            Optional[List[IndividualControlFunctionTable]]: A list of `IndividualControlFunctionTable` objects if the request is successful, otherwise None.
+        """
+        try:
+            url = f"{self.BASE_URL}/Individuals/{irn}/CF"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                control_functions_data = response.json()
+                logger.info(f"Control functions retrieved successfully for IRN: {irn}")
+                if 'Data' in control_functions_data and isinstance(control_functions_data['Data'], list):
+                    data = control_functions_data['Data'][0]
+                    current = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
+                    previous = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Previous', {}).items()} if data.get('Previous') else {}
+                    return IndividualControlFunction(Current=current, Previous=previous)
+                else:
+                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+            else:
+                response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Request failed for IRN {irn}: {e}")
+            return None
+        except ValueError as e:
+            logger.error(f"Value error for IRN {irn}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
+            return None
+        return None
+    
+    def get_individual_disciplinary_history(self, irn: str) -> Optional[List[IndividualDisciplinaryHistory]]:
+        """
+        Retrieve the disciplinary history for a specific individual by their Individual Reference Number (IRN).
+
+        This function sends a GET request to the FCA API's individual disciplinary history endpoint to fetch
+        detailed information about an individual's disciplinary actions. It depends on:
+        - The `requests` library for making HTTP requests.
+        - The `IndividualDisciplinaryHistory` Pydantic model to parse the API response.
+
+        Args:
+            irn (str): The Individual Reference Number.
+
+        Returns:
+            Optional[List[IndividualDisciplinaryHistory]]: A list of `IndividualDisciplinaryHistory` objects if the request is successful, otherwise None.
+        """
+        try:
+            url = f"{self.BASE_URL}/Individuals/{irn}/DisciplinaryHistory"
+            response = requests.get(url, headers=self.headers)
+            if response.status_code == 200:
+                disciplinary_data = response.json()
+                logger.info(f"Disciplinary history retrieved successfully for IRN: {irn}")
+                if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
+                    return [IndividualDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
+                else:
+                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+            else:
+                response.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Request failed for IRN {irn}: {e}")
+            return None
+        except ValueError as e:
+            logger.error(f"Value error for IRN {irn}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"An unexpected error occurred for IRN {irn}: {e}")
+            return None
+        return None
 
 
 
