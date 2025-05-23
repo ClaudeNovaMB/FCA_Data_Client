@@ -4,3 +4,6 @@ fca-api-client/src/Response.json
 fca-api-client/src/Temp.py
 fca-api-client/src/__pycache__/
 fca-api-client/tests/
+Log_fca_api_client.log
+Log_fca_api_crud.log
+

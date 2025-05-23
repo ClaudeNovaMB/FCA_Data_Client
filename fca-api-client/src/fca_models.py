@@ -33,7 +33,6 @@ class FirmExclusion(BaseModel):
     description_of_services: str = Field(..., alias="Description_of_services")
 
 class FirmWaiver(BaseModel):
-    waivers_discretions_url: HttpUrl = Field(..., alias="Waivers_Discretions_URL")
     waivers_discretions: str = Field(..., alias="Waivers_Discretions")
     rule_article_no: List[str] = Field(default_factory=list, alias="Rule_ArticleNo")
 

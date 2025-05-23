@@ -22,7 +22,7 @@ def main():
 
     client = FCAApiClient()
     crud = database_operations()
-    frn = 451236
+    frn = 307164
     
     firm_data = client.get_firm_data(frn)
     

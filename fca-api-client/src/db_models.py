@@ -140,10 +140,9 @@ class FirmWaiverTable(Base):
     __table_args__ = {'schema': 'fcadata'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    waivers_discretions_url = Column(String, nullable=False)
-    waivers_discretions = Column(String, nullable=False)
-    rule_article_no = Column(String, nullable=True)
     firm_frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
+    rule_article_no = Column(String, nullable=True)
+    waivers_discretions = Column(String, nullable=False)
 
 class FirmExclusionTable(Base):
     __tablename__ = 'firm_exclusions'

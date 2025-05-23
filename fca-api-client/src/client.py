@@ -94,10 +94,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 firm_data = response.json()
                 self.client_logger.info(f"Firm data retrieved successfully for FRN: {frn}")
-                if 'Data' in firm_data and isinstance(firm_data['Data'], list) and len(firm_data['Data']) > 0:
-                    return FirmData(**firm_data['Data'][0])
+                if firm_data['Data'] is None:
+                    self.client_logger.warning(f"Firm data not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {firm_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or empty")
+                    if 'Data' in firm_data and isinstance(firm_data['Data'], list) and len(firm_data['Data']) > 0:
+                        return FirmData(**firm_data['Data'][0])
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -133,10 +138,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 firm_names_data = response.json()
                 self.client_logger.info(f"Firm names retrieved successfully for FRN: {frn}")
-                if 'Data' in firm_names_data and isinstance(firm_names_data['Data'], list) and len(firm_names_data['Data']) > 0:
-                    return [FirmNames(**name) for name in firm_names_data['Data']]
+                if firm_names_data['Data'] is None:
+                    self.client_logger.warning(f"Firm names not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {firm_names_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in firm_names_data and isinstance(firm_names_data['Data'], list) and len(firm_names_data['Data']) > 0:
+                        return [FirmNames(**name) for name in firm_names_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -172,10 +182,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 firm_addresses_data = response.json()
                 self.client_logger.info(f"Firm addresses retrieved successfully for FRN: {frn}")
-                if 'Data' in firm_addresses_data and isinstance(firm_addresses_data['Data'], list) and len(firm_addresses_data['Data']) > 0: 
-                    return [FirmAddress(**address) for address in firm_addresses_data['Data']]
+                if firm_addresses_data['Data'] is None:
+                    self.client_logger.warning(f"Firm addresses not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {firm_addresses_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in firm_addresses_data and isinstance(firm_addresses_data['Data'], list) and len(firm_addresses_data['Data']) > 0: 
+                        return [FirmAddress(**address) for address in firm_addresses_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -211,14 +226,19 @@ class FCAApiClient:
             if response.status_code == 200:
                 controlled_functions_data = response.json()
                 self.client_logger.info(f"Controlled functions retrieved successfully for FRN: {frn}")
-                if 'Data' in controlled_functions_data and isinstance(controlled_functions_data['Data'], list) and len(controlled_functions_data['Data']) > 0:
-                    # Map the response data to the FirmControlledFunction model
-                    data = controlled_functions_data['Data'][0]
-                    current = {key: FirmControlledFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
-                    previous = {key: FirmControlledFunctionDetail(**value) for key, value in data.get('Previous', {}).items()} if data.get('Previous') else {}
-                    return FirmControlledFunction(Current=current, Previous=previous)
+                if controlled_functions_data['Data'] is None:
+                    self.client_logger.warning(f"Controlled functions not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {controlled_functions_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in controlled_functions_data and isinstance(controlled_functions_data['Data'], list) and len(controlled_functions_data['Data']) > 0:
+                        # Map the response data to the FirmControlledFunction model
+                        data = controlled_functions_data['Data'][0]
+                        current = {key: FirmControlledFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
+                        previous = {key: FirmControlledFunctionDetail(**value) for key, value in data.get('Previous', {}).items()} if data.get('Previous') else {}
+                        return FirmControlledFunction(Current=current, Previous=previous)
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -254,17 +274,24 @@ class FCAApiClient:
             if response.status_code == 200:
                 activities_permissions_data = response.json()
                 self.client_logger.info(f"Activities and permissions retrieved successfully for FRN: {frn}")
-                if 'Data' in activities_permissions_data and isinstance(activities_permissions_data['Data'], dict):
-                    parsed_activities = []
-                    for activity_name, details in activities_permissions_data['Data'].items():
-                        participation_list = []
-                        for detail in details:
-                            for participation_key, participation_option in detail.items():
-                                participation_list.append(FirmActivityDetail(participation=participation_key, participation_option=participation_option))
-                        parsed_activities.append(FirmActivitiesAndPermissions(activity_name=activity_name, participation=participation_list))
-                    return parsed_activities
+                #check if Data value is None
+                if activities_permissions_data['Data'] is None:
+                    self.client_logger.warning(f"Activities and permissions not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {activities_permissions_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a dictionary")
+                    if 'Data' in activities_permissions_data and isinstance(activities_permissions_data['Data'], dict) :
+
+                        parsed_activities = []
+                        for activity_name, details in activities_permissions_data['Data'].items():
+                            participation_list = []
+                            for detail in details:
+                                for participation_key, participation_option in detail.items():
+                                    participation_list.append(FirmActivityDetail(participation=participation_key, participation_option=participation_option))
+                            parsed_activities.append(FirmActivitiesAndPermissions(activity_name=activity_name, participation=participation_list))
+                        return parsed_activities
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a dictionary")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -300,10 +327,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 requirements_data = response.json()
                 self.client_logger.info(f"Requirements retrieved successfully for FRN: {frn}")
-                if 'Data' in requirements_data and isinstance(requirements_data['Data'], list) and len(requirements_data['Data']) > 0:
-                    return [FirmRequirement(**requirement) for requirement in requirements_data['Data']]
+                if requirements_data['Data'] is None:
+                    self.client_logger.warning(f"Requirements not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {requirements_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in requirements_data and isinstance(requirements_data['Data'], list) and len(requirements_data['Data']) > 0:
+                        return [FirmRequirement(**requirement) for requirement in requirements_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -341,15 +373,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 investment_types_data = response.json()
                 self.client_logger.info(f"Investment types retrieved successfully for FRN: {frn}")
-                if investment_types_data['Message'] != "Investment Types not found":
+                if investment_types_data['Data'] is None:
+                    self.client_logger.warning(f"Investment types not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {investment_types_data['Message']}")
+                    return None
+                else:
                     if 'Data' in investment_types_data and isinstance(investment_types_data['Data'], list) and len(investment_types_data['Data']) > 0:
                         return [FirmInvestmentType(**investment_type) for investment_type in investment_types_data['Data']]
                     else:
                         raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
-                else:
-                    self.client_logger.warning(f"Investment types not found for FRN: {frn}")
-                    return None
-
             else:
                 response.raise_for_status()
 
@@ -386,10 +418,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 individuals_data = response.json()
                 self.client_logger.info(f"Individuals retrieved successfully for FRN: {frn}")
-                if 'Data' in individuals_data:
-                    return [individual['IRN'] for individual in individuals_data['Data']]
+                if individuals_data['Data'] is None:
+                    self.client_logger.warning(f"Individuals not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {individuals_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in individuals_data:
+                        return [individual['IRN'] for individual in individuals_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -411,10 +448,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 individual_data = response.json()
                 self.client_logger.info(f"Individual data retrieved successfully for IRN: {irn}")
-                if 'Data' in individual_data and isinstance(individual_data['Data'], list):
-                    return [IndividualData(**name) for name in individual_data['Data']]
+                if individual_data['Data'] is None:
+                    self.client_logger.warning(f"Individual data not found for IRN: {irn}")
+                    self.client_logger.warning(f"API MESSAGE: {individual_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+                    if 'Data' in individual_data and isinstance(individual_data['Data'], list):
+                        return [IndividualData(**name) for name in individual_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a list")
             else:   
                 response.raise_for_status()
             return None  # Return None as a fallback
@@ -450,10 +492,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 regulators_data = response.json()
                 self.client_logger.info(f"Regulators retrieved successfully for FRN: {frn}")
-                if 'Data' in regulators_data and isinstance(regulators_data['Data'], list) and len(regulators_data['Data']) > 0:
-                    return [FirmRegulator(**regulator) for regulator in regulators_data['Data']]
+                if regulators_data['Data'] is None:
+                    self.client_logger.warning(f"Regulators not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {regulators_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in regulators_data and isinstance(regulators_data['Data'], list) and len(regulators_data['Data']) > 0:
+                        return [FirmRegulator(**regulator) for regulator in regulators_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -489,14 +536,16 @@ class FCAApiClient:
             if response.status_code == 200:
                 waivers_data = response.json()
                 self.client_logger.info(f"Waivers retrieved successfully for FRN: {frn}")
-                if waivers_data['Message'] != "Waivers not found":
+                if waivers_data['Data'] is None:
+                    self.client_logger.warning(f"Waivers not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {waivers_data['Message']}")
+                    return None
+                else:
                     if 'Data' in waivers_data and isinstance(waivers_data['Data'], list) and len(waivers_data['Data']) > 0:
                         return [FirmWaiver(**waiver) for waiver in waivers_data['Data']]
                     else:
                         raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
-                else:
-                    self.client_logger.warning(f"Waivers not found for FRN: {frn}")
-                    return None
+                    
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -532,10 +581,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 exclusions_data = response.json()
                 self.client_logger.info(f"Exclusions retrieved successfully for FRN: {frn}")
-                if 'Data' in exclusions_data and isinstance(exclusions_data['Data'], list) and len(exclusions_data['Data']) > 0:
-                    return [FirmExclusion(**exclusion) for exclusion in exclusions_data['Data']]
+                if exclusions_data['Data'] is None:
+                    self.client_logger.warning(f"Exclusions not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {exclusions_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
+                    if 'Data' in exclusions_data and isinstance(exclusions_data['Data'], list) and len(exclusions_data['Data']) > 0:
+                        return [FirmExclusion(**exclusion) for exclusion in exclusions_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing, not a list, or empty")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -571,10 +625,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 disciplinary_data = response.json()
                 self.client_logger.info(f"Disciplinary history retrieved successfully for FRN: {frn}")
-                if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
-                    return [FirmDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
+                if disciplinary_data['Data'] is None:
+                    self.client_logger.warning(f"Disciplinary history not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {disciplinary_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+                    if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
+                        return [FirmDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a list")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -610,10 +669,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 appointed_representatives_data = response.json()
                 self.client_logger.info(f"Appointed representatives retrieved successfully for FRN: {frn}")
-                if 'Data' in appointed_representatives_data and isinstance(appointed_representatives_data['Data'], dict):
-                    return FirmAppointedRepresentative(**appointed_representatives_data['Data'])
-                else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a dictionary")
+                if appointed_representatives_data['Data'] is None:
+                    self.client_logger.warning(f"Appointed representatives not found for FRN: {frn}")
+                    self.client_logger.warning(f"API MESSAGE: {appointed_representatives_data['Message']}")
+                    return None
+                else:   
+                    if 'Data' in appointed_representatives_data and isinstance(appointed_representatives_data['Data'], dict):
+                        return FirmAppointedRepresentative(**appointed_representatives_data['Data'])
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a dictionary")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -649,13 +713,18 @@ class FCAApiClient:
             if response.status_code == 200:
                 control_functions_data = response.json()
                 self.client_logger.info(f"Control functions retrieved successfully for IRN: {irn}")
-                if 'Data' in control_functions_data and isinstance(control_functions_data['Data'], list):
-                    data = control_functions_data['Data'][0]
-                    current = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
-                    previous = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Previous', {}).items()} if data.get('Previous') else {}
-                    return IndividualControlFunction(Current=current, Previous=previous)
+                if control_functions_data['Data'] is None:
+                    self.client_logger.warning(f"Control functions not found for IRN: {irn}")
+                    self.client_logger.warning(f"API MESSAGE: {control_functions_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+                    if 'Data' in control_functions_data and isinstance(control_functions_data['Data'], list):
+                        data = control_functions_data['Data'][0]
+                        current = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Current', {}).items()} if data.get('Current') else {}
+                        previous = {key: IndividualControlFunctionDetail(**value) for key, value in data.get('Previous', {}).items()} if data.get('Previous') else {}
+                        return IndividualControlFunction(Current=current, Previous=previous)
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a list")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:
@@ -691,10 +760,15 @@ class FCAApiClient:
             if response.status_code == 200:
                 disciplinary_data = response.json()
                 self.client_logger.info(f"Disciplinary history retrieved successfully for IRN: {irn}")
-                if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
-                    return [IndividualDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
+                if disciplinary_data['Data'] is None:
+                    self.client_logger.warning(f"Disciplinary history not found for IRN: {irn}")
+                    self.client_logger.warning(f"API MESSAGE: {disciplinary_data['Message']}")
+                    return None
                 else:
-                    raise ValueError("Invalid response format: 'Data' field is missing or not a list")
+                    if 'Data' in disciplinary_data and isinstance(disciplinary_data['Data'], list):
+                        return [IndividualDisciplinaryHistory(**item) for item in disciplinary_data['Data']]
+                    else:
+                        raise ValueError("Invalid response format: 'Data' field is missing or not a list")
             else:
                 response.raise_for_status()
         except requests.RequestException as e:

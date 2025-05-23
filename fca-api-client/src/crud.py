@@ -474,10 +474,9 @@ class database_operations:
         try:
             for waiver in firm_waivers:
                 waiver_entry = FirmWaiverTable(
-                    waivers_discretions_url=waiver.waivers_discretions_url,
-                    waivers_discretions=waiver.waivers_discretions,
+                    firm_frn=frn,
                     rule_article_no=waiver.rule_article_no,
-                    firm_frn=frn
+                    waivers_discretions=waiver.waivers_discretions
                 )
                 session.add(waiver_entry)
             session.commit()
