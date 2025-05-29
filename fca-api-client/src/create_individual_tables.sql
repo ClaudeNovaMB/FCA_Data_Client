@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS fcadata.individual_data (
     UNIQUE (frn, full_name, commonly_used_name, individual_status, status)
 );
 
+ALTER TABLE IF EXISTS fcadata.firm_waivers
+    OWNER to admin_user;
+
 CREATE TABLE IF NOT EXISTS fcadata.individual_control_function (
     id SERIAL PRIMARY KEY,
     irn VARCHAR NOT NULL REFERENCES fcadata.individual_data(irn),
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS fcadata.individual_control_function (
     UNIQUE (irn, person_name, firm_name, effective_date, end_date, customer_engagement_method, suspension_restriction_end_date, suspension_restriction_start_date, restriction)
 );
 
+ALTER TABLE IF EXISTS fcadata.firm_waivers
+    OWNER to admin_user;
+
 CREATE TABLE IF NOT EXISTS fcadata.individual_disciplinary_history (
     id SERIAL PRIMARY KEY,
     irn VARCHAR NOT NULL REFERENCES fcadata.individual_data(irn),
@@ -32,6 +38,9 @@ CREATE TABLE IF NOT EXISTS fcadata.individual_disciplinary_history (
     typeof_description VARCHAR,
     UNIQUE (irn, action_effective_from, enforcement_type, typeof_action, typeof_description)
 );
+
+ALTER TABLE IF EXISTS fcadata.firm_waivers
+    OWNER to admin_user;
 
 CREATE TABLE IF NOT EXISTS fcadata.firms
 (
@@ -57,9 +66,26 @@ CREATE TABLE IF NOT EXISTS fcadata.firms
     CONSTRAINT firms_pkey PRIMARY KEY (frn)
 )
 
+ALTER TABLE IF EXISTS fcadata.firms
+    OWNER to admin_user;
+
+CREATE TABLE IF NOT EXISTS fcadata.firm_exceptional_info_details
+(
+    id integer NOT NULL DEFAULT nextval('fcadata.firm_exceptional_info_details_id_seq'::regclass),
+    firm_frn integer NOT NULL,
+    exceptional_info_title character varying COLLATE pg_catalog."default" NOT NULL,
+    exceptional_info_body character varying COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT firm_exceptional_info_details_pkey PRIMARY KEY (id),
+    CONSTRAINT unique_feid UNIQUE (firm_frn, exceptional_info_title, exceptional_info_body),
+    CONSTRAINT firm_exceptional_info_details_firm_frn_fkey FOREIGN KEY (firm_frn)
+        REFERENCES fcadata.firms (frn) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
 TABLESPACE pg_default;
 
-ALTER TABLE IF EXISTS fcadata.firms
+ALTER TABLE IF EXISTS fcadata.firm_exceptional_info_details
     OWNER to admin_user;
 
 CREATE TABLE IF NOT EXISTS fcadata.firm_activities_and_permissions
@@ -76,8 +102,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_activities_and_permissions
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-
-TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS fcadata.firm_activities_and_permissions
     OWNER to admin_user;
@@ -105,8 +129,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_addresses
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_addresses
     OWNER to admin_user;
 
@@ -123,8 +145,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_appointed_representatives
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-
-TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS fcadata.firm_appointed_representatives
     OWNER to admin_user;
@@ -150,8 +170,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_controlled_functions
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_controlled_functions
     OWNER to admin_user;
 
@@ -171,8 +189,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_disciplinary_histories
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_disciplinary_histories
     OWNER to admin_user;
 
@@ -191,8 +207,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_exclusions
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_exclusions
     OWNER to admin_user;
 
@@ -208,8 +222,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_investment_types
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-
-TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS fcadata.firm_investment_types
     OWNER to admin_user;
@@ -230,10 +242,9 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_names
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_names
     OWNER to admin_user;
+
 CREATE TABLE IF NOT EXISTS fcadata.firm_passports
 (
     id integer NOT NULL DEFAULT nextval('fcadata.firm_passports_id_seq'::regclass),
@@ -252,8 +263,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_passports
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_passports
     OWNER to admin_user;
 
@@ -271,8 +280,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_regulators
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-
-TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS fcadata.firm_regulators
     OWNER to admin_user;
@@ -294,8 +301,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_requirements
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_requirements
     OWNER to admin_user;
 
@@ -313,8 +318,6 @@ CREATE TABLE IF NOT EXISTS fcadata.firm_waivers
         ON DELETE NO ACTION
 )
 
-TABLESPACE pg_default;
-
 ALTER TABLE IF EXISTS fcadata.firm_waivers
     OWNER to admin_user;
 
@@ -328,6 +331,10 @@ CREATE TABLE IF NOT EXISTS fcadata.client_logs (
 
 SELECT create_hypertable('fcadata.client_logs', 'timestamp');
 
+ALTER TABLE IF EXISTS fcadata.client_logs
+    OWNER to admin_user;
+
+
 CREATE TABLE IF NOT EXISTS fcadata.crud_logs (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMPTZ NOT NULL,
@@ -337,3 +344,5 @@ CREATE TABLE IF NOT EXISTS fcadata.crud_logs (
 
 SELECT create_hypertable('fcadata.crud_logs', 'timestamp');
 
+ALTER TABLE IF EXISTS fcadata.crud_logs
+    OWNER to admin_user;
