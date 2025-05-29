@@ -58,6 +58,14 @@ def main():
         else:
             print("No results found.")
             return
+    else:
+        if frn is not None:
+            print(f"Storing data for FRN: {frn}")
+            data_storage_status = store_firm_data(frn)
+            print(f"Data storage status for FRN {frn}: {data_storage_status}")
+        else:
+            print("No FRN provided. Exiting...")
+            return
         
 def store_firm_data(frn):
     client = FCAApiClient()

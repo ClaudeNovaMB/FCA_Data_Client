@@ -1,19 +1,19 @@
-def setup_logging(log_file='fca_api.log', logger_name='default_logger'):
+def setup_logging_to_db(logger_name='default_logger', log_type='client'):
     """
-    Set up logging for the application.
-
-    This function configures the logging module to log messages to a specified file
-    with a consistent format. It depends on:
-    - The `logging` module for logging configuration and message handling.
+    Set up logging to store logs in the database.
 
     Args:
-        log_file (str, optional): The name of the log file. Defaults to 'fca_api.log'.
         logger_name (str, optional): The name of the logger. Defaults to 'default_logger'.
+        log_type (str, optional): Type of log ('client' or 'crud'). Defaults to 'client'.
 
     Returns:
         logging.Logger: A configured logger instance.
     """
     import logging
+    from sqlalchemy.orm import sessionmaker
+    from config import engine
+    from db_models import ClientLogTable, CrudLogTable
+    from datetime import datetime, timezone
 
     # Create a logger with the specified name
     logger = logging.getLogger(logger_name)
@@ -21,15 +21,34 @@ def setup_logging(log_file='fca_api.log', logger_name='default_logger'):
 
     # Check if the logger already has handlers to avoid duplicate logs
     if not logger.handlers:
-        # Create a file handler for the log file
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.INFO)
+        class DBHandler(logging.Handler):
+            def emit(self, record):
+                session = sessionmaker(bind=engine)()
+                try:
+                    log_entry = None
+                    if log_type == 'client':
+                        log_entry = ClientLogTable(
+                            timestamp= datetime.fromtimestamp(record.created, tz=timezone.utc),
+                            log_level=record.levelname,
+                            log_message=record.message
+                        )
+                    elif log_type == 'crud':
+                        log_entry = CrudLogTable(
+                            timestamp = datetime.fromtimestamp(record.created, tz=timezone.utc),
+                            log_level=record.levelname,
+                            log_message=record.message
+                        )
+                    if log_entry:
+                        session.add(log_entry)
+                        session.commit()
+                except Exception as e:
+                    session.rollback()
+                    print(f"Failed to log to database: {e}")
+                finally:
+                    session.close()
 
-        # Create a formatter and set it for the handler
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        file_handler.setFormatter(formatter)
-
-        # Add the handler to the logger
-        logger.addHandler(file_handler)
+        # Add the database handler to the logger
+        db_handler = DBHandler()
+        logger.addHandler(db_handler)
 
     return logger

@@ -33,7 +33,9 @@ class FirmExclusion(BaseModel):
     description_of_services: str = Field(..., alias="Description_of_services")
 
 class FirmWaiver(BaseModel):
-    waivers_discretions: str = Field(..., alias="Waivers_Discretions")
+    #convert waivers_discretions property to 'Null' if it is None
+
+    waivers_discretions: Optional[str] = Field(..., alias="Waivers_Discretions")
     rule_article_no: List[str] = Field(default_factory=list, alias="Rule_ArticleNo")
 
 class FirmPermissionDetail(BaseModel):

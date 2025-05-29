@@ -9,7 +9,7 @@ from db_models import FirmControlledFunctionTable, FirmActivitiesAndPermissionsT
 from db_models import FirmRegulatorTable, FirmWaiverTable, FirmExclusionTable, FirmDisciplinaryHistoryTable
 from db_models import IndividualDataTable, FirmAppointedRepresentativeTable, FirmInvestmentTypeTable, Base
 from db_models import IndividualControlFunctionTable, IndividualDisciplinaryHistoryTable
-from utils import setup_logging
+from utils import setup_logging_to_db
 from typing import List
 from psycopg2.errors import UniqueViolation
 
@@ -34,7 +34,7 @@ initialize_database()
 
 class database_operations:
     def __init__(self):
-        self.crud_logger = setup_logging(log_file='Log_fca_api_crud.log', logger_name='crud_logger')
+        self.crud_logger = setup_logging_to_db(logger_name='crud_logger', log_type='crud')
     
     def save_firmdata_to_database(self, firm_data: FirmData):
         """
@@ -124,7 +124,7 @@ class database_operations:
                             effective_from=name.effective_from,
                             effective_to=name.effective_to,
                         )
-                        session.add(firm_name)
+                        session.merge(firm_name)
                         session.commit()
                         self.crud_logger.info(f"FRN: {frn} - Current name added: {name.firm_name}")
                     except UniqueViolation:
@@ -139,7 +139,7 @@ class database_operations:
                             effective_from=name.effective_from,
                             effective_to=name.effective_to
                         )
-                        session.add(firm_name)
+                        session.merge(firm_name)
                         session.commit()
                         self.crud_logger.info(f"FRN: {frn} - Previous name added: {name.firm_name}")
                     except UniqueViolation:
@@ -235,7 +235,9 @@ class database_operations:
                         )
                         session.merge(controlled_function_entry)
                         session.commit()
+                    
                     except UniqueViolation:
+                        self.crud_logger.warning(f"Duplicate entry for controlled function {key} for FRN {frn}")
                         session.rollback()
             # Save previous controlled functions if available
             if controlled_function.previous:
@@ -255,7 +257,9 @@ class database_operations:
                         )
                         session.merge(controlled_function_entry)
                         session.commit()
+
                     except UniqueViolation:
+                        self.crud_logger.warning(f"Duplicate entry for controlled function {key} for FRN {frn}")
                         session.rollback()
             
             self.crud_logger.info(f"Controlled functions updated in database for FRN: {frn}")
@@ -402,7 +406,7 @@ class database_operations:
                         firm_frn=frn,
                         investment_type=investment_type
                     )
-                    session.add(investment_type_entry)
+                    session.merge(investment_type_entry)
                     session.commit()
                 except UniqueViolation:
                     session.rollback()
@@ -473,13 +477,17 @@ class database_operations:
         session = Session()
         try:
             for waiver in firm_waivers:
-                waiver_entry = FirmWaiverTable(
-                    firm_frn=frn,
-                    rule_article_no=waiver.rule_article_no,
-                    waivers_discretions=waiver.waivers_discretions
-                )
-                session.add(waiver_entry)
-            session.commit()
+                try:
+                    waiver_entry = FirmWaiverTable(
+                        firm_frn=frn,
+                        rule_article_no=waiver.rule_article_no,
+                        waivers_discretions=waiver.waivers_discretions
+                    )
+                    session.merge(waiver_entry)
+                    session.commit()
+                except UniqueViolation:
+                    session.rollback()
+                    self.crud_logger.warning(f"Duplicate entry for waiver {waiver.rule_article_no} for FRN {frn}")
             self.crud_logger.info(f"Firm waivers saved to database for FRN: {frn}")
             return True
         except Exception as e:
@@ -512,7 +520,7 @@ class database_operations:
                     description_of_services=exclusion.description_of_services,
                     firm_frn=frn
                 )
-                session.add(exclusion_entry)
+                session.merge(exclusion_entry)
             session.commit()
             self.crud_logger.info(f"Firm exclusions saved to database for FRN: {frn}")
             return True
@@ -547,7 +555,7 @@ class database_operations:
                     action_effective_from=history.action_effective_from,
                     firm_frn=frn
                 )
-                session.add(history_entry)
+                session.merge(history_entry)
             session.commit()
             self.crud_logger.info(f"Firm disciplinary history saved to database for FRN: {frn}")
             return True
@@ -726,14 +734,14 @@ class database_operations:
                     current_appointed_representatives=representative.name,
                     firm_frn=frn
                 )
-                session.add(current_entry)
+                session.merge(current_entry)
 
             for representative in appointed_representatives.previous_appointed_representatives:
                 previous_entry = FirmAppointedRepresentativeTable(
                     previous_appointed_representatives=representative.name,
                     firm_frn=frn
                 )
-                session.add(previous_entry)
+                session.merge(previous_entry)
 
             session.commit()
             self.crud_logger.info(f"Firm appointed representatives saved to database for FRN: {frn}")

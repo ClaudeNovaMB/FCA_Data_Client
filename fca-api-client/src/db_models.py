@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
@@ -176,23 +176,29 @@ class FirmAppointedRepresentativeTable(Base):
 
 class IndividualDataTable(Base):
     __tablename__ = 'individual_data'
-    __table_args__ = {'schema': 'fcadata'}
-    
+    __table_args__ = (
+        {'schema': 'fcadata'},
+        UniqueConstraint('frn', 'full_name', 'commonly_used_name', 'individual_status', name='unique_individual_data')
+    )
+
     frn = Column(Integer, ForeignKey('fcadata.firms.frn'), nullable=False)
     irn = Column(String, primary_key=True, unique=True)
     full_name = Column(String, nullable=True)
     commonly_used_name = Column(String, nullable=True)
     individual_status = Column(String, nullable=True)
-    
+
 class IndividualControlFunctionTable(Base):
     __tablename__ = 'individual_control_function'
-    __table_args__ = {'schema': 'fcadata'}
+    __table_args__ = (
+        {'schema': 'fcadata'},
+        UniqueConstraint('irn', 'firm_name', 'control_status', 'effective_date', 'end_date', 'customer_engagement_method', 'suspension_restriction_end_date', 'suspension_restriction_start_date', 'restriction', name='unique_individual_control_function')
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     irn = Column(String, ForeignKey('fcadata.individual_data.irn'), nullable=False)
     role_name = Column(String, nullable=True)
     firm_name = Column(String, nullable=True)
-    control_status = Column(String, nullable=True) 
+    control_status = Column(String, nullable=True)
     effective_date = Column(String, nullable=True)
     end_date = Column(String, nullable=True)
     customer_engagement_method = Column(String, nullable=True)
@@ -202,7 +208,10 @@ class IndividualControlFunctionTable(Base):
 
 class IndividualDisciplinaryHistoryTable(Base):
     __tablename__ = 'individual_disciplinary_history'
-    __table_args__ = {'schema': 'fcadata'}
+    __table_args__ = (
+        {'schema': 'fcadata'},
+        UniqueConstraint('irn', 'action_effective_from', 'enforcement_type', 'typeof_action', 'typeof_description', name='unique_individual_disciplinary_history')
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     irn = Column(String, ForeignKey('fcadata.individual_data.irn'), nullable=False)
@@ -210,3 +219,21 @@ class IndividualDisciplinaryHistoryTable(Base):
     enforcement_type = Column(String, nullable=True)
     typeof_action = Column(String, nullable=True)
     typeof_description = Column(String, nullable=True)
+
+class ClientLogTable(Base):
+    __tablename__ = 'client_logs'
+    __table_args__ = {'schema': 'fcadata'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(String, nullable=False)
+    log_level = Column(String, nullable=False)
+    log_message = Column(String, nullable=False)
+
+class CrudLogTable(Base):
+    __tablename__ = 'crud_logs'
+    __table_args__ = {'schema': 'fcadata'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(String, nullable=False)
+    log_level = Column(String, nullable=False)
+    log_message = Column(String, nullable=False)

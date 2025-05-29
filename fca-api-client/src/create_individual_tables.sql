@@ -318,3 +318,22 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS fcadata.firm_waivers
     OWNER to admin_user;
 
+-- Updated log table definitions to leverage TimescaleDB hypertable optimization
+CREATE TABLE IF NOT EXISTS fcadata.client_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL,
+    log_level VARCHAR NOT NULL,
+    log_message VARCHAR NOT NULL
+);
+
+SELECT create_hypertable('fcadata.client_logs', 'timestamp');
+
+CREATE TABLE IF NOT EXISTS fcadata.crud_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL,
+    log_level VARCHAR NOT NULL,
+    log_message VARCHAR NOT NULL
+);
+
+SELECT create_hypertable('fcadata.crud_logs', 'timestamp');
+

@@ -6,7 +6,7 @@ from fca_models import FirmWaiver, FirmExclusion, FirmDisciplinaryHistory, FirmA
 from fca_models import FirmActivitiesAndPermissions, FirmActivityDetail, FirmInvestmentType
 from fca_models import IndividualControlFunction, IndividualControlFunctionDetail, IndividualDisciplinaryHistory
 from auth import get_auth_headers
-from utils import setup_logging
+from utils import setup_logging_to_db
 import time
 from threading import Lock
 
@@ -19,7 +19,7 @@ class FCAApiClient:
         self.headers = get_auth_headers()
         self.lock = Lock()
         self.request_timestamps = []
-        self.client_logger = setup_logging(log_file='Log_fca_api_client.log', logger_name='api_client_logger')
+        self.client_logger = setup_logging_to_db(logger_name='fca_client_logger', log_type='client')
 
     def _rate_limit(self):
         """
@@ -64,6 +64,16 @@ class FCAApiClient:
             if response.status_code == 200:
                 raw_output = response.json()
                 self.client_logger.info(f"Search results retrieved successfully for query: {query}")
+                while 'Next' in raw_output['ResultInfo'] and raw_output['ResultInfo']['Next'] is not None:
+                    next_url = raw_output['ResultInfo']['Next']
+                    next_response = requests.get(next_url, headers=self.headers)
+                    if next_response.status_code == 200:
+                        next_data = next_response.json()
+                        raw_output['Data'].extend(next_data['Data'])
+                        raw_output['ResultInfo']['Next'] = next_data['ResultInfo'].get('Next')
+                    else:
+                        self.client_logger.error(f"Failed to fetch next page: {next_response.status_code}")
+                        break
                 if raw_output['Data'] is None:
                     self.client_logger.warning(f"No data found for query: {query}")
                     self.client_logger.warning(f"API MESSAGE: {raw_output['Message']}")
